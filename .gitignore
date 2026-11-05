@@ -1,0 +1,9 @@
+config.toml
+data/
+voices/
+__pycache__/
+*.pyc
+.venv/
+workspace/memoria/
+dist/
+build/

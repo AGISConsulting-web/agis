@@ -1,0 +1,10 @@
+{
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "deny": [
+      "Bash",
+      "Read(../config.toml)",
+      "Read(../data/**)"
+    ]
+  }
+}

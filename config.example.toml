@@ -1,0 +1,24 @@
+# Copia questo file in config.toml e modificalo. config.toml non va mai su GitHub.
+
+[general]
+workspace = "workspace"   # cartella del "cervello": CLAUDE.md, skill, memoria
+data_dir = "data"         # database locale delle conversazioni
+
+[brain]
+# "abbonamento" = usa il tuo login di Claude Code (piano Pro): nessun costo extra.
+# "api_key"     = usa una chiave API Anthropic (per installazioni in azienda/clienti).
+auth = "abbonamento"
+api_key = ""
+claude_cmd = "claude"
+model = ""                # vuoto = modello predefinito di Claude Code
+timeout_s = 300
+allowed_tools = ["WebSearch", "WebFetch", "Read", "Glob", "Grep", "Write", "Edit", "mcp__notion"]
+disallowed_tools = ["Bash"]
+
+[voice]
+enabled = true
+hotkey = "ctrl+alt+j"     # premi una volta per parlare, di nuovo per finire
+whisper_model = "small"   # tiny/base = più veloce, medium = più preciso
+language = "it"
+piper_model = "voices/it_IT-paola-medium.onnx"
+sample_rate = 16000
