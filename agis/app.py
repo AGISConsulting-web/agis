@@ -9,6 +9,7 @@ from pathlib import Path
 
 from . import config as config_mod
 from .brain import BrainError
+from .google_mcp import mcp_config_args
 from .live import LiveBrain
 from .memory import Memory
 from .sync import NotionSync
@@ -24,7 +25,9 @@ class Api:
         self._memory = Memory(cfg.data_dir / "agis.db",
                              cfg.workspace / "memoria" / "feedback.md")
         allow, deny = cfg.connectors.rules()
-        self._brain = LiveBrain(cfg.brain, cfg.workspace, extra_allowed=allow, extra_denied=deny)
+        g_args, g_allow = mcp_config_args(cfg)   # caselle di lavoro/scuola, se collegate
+        self._brain = LiveBrain(cfg.brain, cfg.workspace, extra_allowed=allow + g_allow,
+                                extra_denied=deny, extra_args=g_args)
         self._sync = NotionSync(cfg.notion, self._brain, self._memory,
                                 cfg.workspace / "memoria" / "notion.md")
         self._window = None

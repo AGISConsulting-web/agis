@@ -38,3 +38,9 @@ enabled = true
 servers = ["Gmail", "Google_Calendar", "Google_Drive", "Notion"]
 allow_send = false            # true = AGIS può inviare/rispondere/inoltrare mail (di base: solo bozze)
 allow_calendar_edit = false   # true = AGIS può creare e modificare eventi (di base: solo lettura)
+
+[google]
+# Caselle Gmail di lavoro/scuola collegate direttamente (guida nel README).
+# Ogni account va collegato una volta: python scripts\collega_google.py <email>
+accounts = ["a.loffredo@v-media.it", "andrea.loffredo@itsrizzoli.it"]
+client_secret = "data/google/client_secret.json"

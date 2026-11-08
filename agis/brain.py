@@ -42,7 +42,8 @@ class Brain:
     def __init__(self, cfg: BrainConfig, workspace: Path,
                  runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
                  extra_allowed: list[str] | None = None,
-                 extra_denied: list[str] | None = None):
+                 extra_denied: list[str] | None = None,
+                 extra_args: list[str] | None = None):
         self.cfg = cfg
         self.workspace = workspace
         self.runner = runner
@@ -50,6 +51,8 @@ class Brain:
         # Regole dei connettori claude.ai (Gmail, Calendar, Drive…), vedi ConnectorsConfig.
         self.extra_allowed = list(extra_allowed or [])
         self.extra_denied = list(extra_denied or [])
+        # Argomenti in più per Claude Code, es. --mcp-config del collegamento Gmail di lavoro.
+        self.extra_args = list(extra_args or [])
 
     def new_session(self) -> None:
         self.session_id = None
@@ -73,6 +76,7 @@ class Brain:
             cmd += ["--resume", self.session_id]
         if self.cfg.model:
             cmd += ["--model", self.cfg.model]
+        cmd += self.extra_args
         allowed = [*self.cfg.allowed_tools, *self.extra_allowed]
         denied = [*self.cfg.disallowed_tools, *self.extra_denied]
         if allowed:

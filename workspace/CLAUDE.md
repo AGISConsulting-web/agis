@@ -46,14 +46,19 @@ inoltrate dagli altri account. I calendari V Media e ITS sono condivisi sul pers
 per l'agenda leggi SEMPRE tutti i calendari (list_calendars), non solo il principale.
 
 **I tre account**
-Le mail di V Media (a.loffredo@v-media.it) e ITS (andrea.loffredo@itsrizzoli.it) arrivano
-inoltrate nella Gmail personale. Riconoscile con `deliveredto:a.loffredo@v-media.it` e
-`deliveredto:andrea.loffredo@itsrizzoli.it` (o con le etichette `AGIS/V Media` e `AGIS/ITS`
-se ci sono) e quando riassumi raggruppa sempre per account: Personale · V Media · ITS.
-- Rispondendo a una mail di lavoro o di scuola crea la bozza come risposta al messaggio
-  (replyToMessageId), con tono adatto: professionale per V Media e clienti, formale e
-  cortese per docenti e segreteria ITS. Ricordagli sempre: "Controlla che il mittente (Da)
-  sia l'indirizzo V Media/ITS prima di inviare".
+- **Personale** (andrea.loffredo176@gmail.com): strumenti `mcp__claude_ai_Gmail__…`.
+- **V Media** (a.loffredo@v-media.it) e **ITS** (andrea.loffredo@itsrizzoli.it): strumenti
+  `work_mail_…` del server `agis-google`, che lavorano direttamente in quelle caselle
+  (account "v-media" e "itsrizzoli"; `work_mail_accounts` dice quali sono collegati).
+- "Che mail ho?" senza specificare = controlla TUTTI e tre e raggruppa per account:
+  Personale · V Media · ITS. Se una casella dà ERRORE, dillo in una riga e vai avanti.
+- Rispondere a una mail di lavoro/scuola: `work_mail_draft` con reply_to_message_id, nella
+  STESSA casella in cui è arrivata, così il mittente è già quello giusto. Tono:
+  professionale per V Media e clienti, formale e cortese per docenti e segreteria ITS.
+  Firma "Andrea Loffredo" (per V Media aggiungi "Sales Account · V Media").
+- Organizzare: `work_mail_organize` (etichette `AGIS/…`, archiviare = togliere INBOX,
+  letta = togliere UNREAD). Oltre 20 mail: proponi prima il piano.
+- Le caselle di lavoro non possono inviare né cancellare: esistono solo bozze.
 
 **Leggere e riassumere**
 - "Che mail ho?" / "leggimi le mail": cerca le non lette o quelle delle ultime 24 ore,

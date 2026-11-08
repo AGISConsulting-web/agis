@@ -61,6 +61,16 @@ class ConnectorsConfig:
 
 
 @dataclass
+class GoogleConfig:
+    """Caselle Gmail di lavoro/scuola collegate direttamente (piano B).
+
+    Ogni account va collegato una volta con `python scripts/collega_google.py <email>`.
+    """
+    accounts: list[str] = field(default_factory=list)
+    client_secret: str = "data/google/client_secret.json"
+
+
+@dataclass
 class NotionConfig:
     """Il cervello condiviso: le stesse pagine che leggono i task automatici."""
     enabled: bool = True
@@ -88,6 +98,7 @@ class Config:
     data_dir: Path
     notion: NotionConfig = field(default_factory=NotionConfig)
     connectors: ConnectorsConfig = field(default_factory=ConnectorsConfig)
+    google: GoogleConfig = field(default_factory=GoogleConfig)
 
 
 def load(path: Path | None = None) -> Config:
@@ -99,6 +110,9 @@ def load(path: Path | None = None) -> Config:
     voice = VoiceConfig(**raw.get("voice", {}))
     notion = NotionConfig(**raw.get("notion", {}))
     connectors = ConnectorsConfig(**raw.get("connectors", {}))
+    google = GoogleConfig(**raw.get("google", {}))
+    if not Path(google.client_secret).is_absolute():
+        google.client_secret = str(ROOT / google.client_secret)
     general = raw.get("general", {})
     workspace = ROOT / general.get("workspace", "workspace")
     data_dir = ROOT / general.get("data_dir", "data")
@@ -106,4 +120,4 @@ def load(path: Path | None = None) -> Config:
     if not Path(voice.piper_model).is_absolute():
         voice.piper_model = str(ROOT / voice.piper_model)
     return Config(brain=brain, voice=voice, workspace=workspace, data_dir=data_dir,
-                  notion=notion, connectors=connectors)
+                  notion=notion, connectors=connectors, google=google)

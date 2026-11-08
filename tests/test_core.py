@@ -274,3 +274,125 @@ def test_streaming_speaker_speaks_sentence_by_sentence():
     sp.finish()
     t.sleep(0.05)
     assert spoken == ["Oggi hai tre mail.", "La prima è di V Media!", "Vuoi i dettagli"]
+
+
+# --- collegamento Gmail di lavoro (piano B) -------------------------------------
+class FakeGmail:
+    """Finta API Gmail: registra le chiamate e restituisce dati di prova."""
+    def __init__(self):
+        import base64 as b64
+        self.calls = []
+        self.drafts_created = []
+        self.labels_store = [{"id": "Label_1", "name": "AGIS/Clienti", "type": "user"},
+                             {"id": "INBOX", "name": "INBOX", "type": "system"}]
+        body = b64.urlsafe_b64encode("Ciao Andrea, mi mandi il preventivo?".encode()).decode().rstrip("=")
+        self.msg = {"id": "m1", "threadId": "t1", "labelIds": ["INBOX", "UNREAD"],
+                    "snippet": "Ciao Andrea", "payload": {"mimeType": "multipart/alternative",
+                    "headers": [{"name": "From", "value": "Mario Rossi <mario@cliente.it>"},
+                                {"name": "To", "value": "a.loffredo@v-media.it"},
+                                {"name": "Cc", "value": "capo@v-media.it, a.loffredo@v-media.it"},
+                                {"name": "Subject", "value": "Preventivo sito"},
+                                {"name": "Date", "value": "Sun, 8 Nov 2026 10:00"},
+                                {"name": "Message-ID", "value": "<abc@cliente.it>"}],
+                    "parts": [{"mimeType": "text/plain", "body": {"data": body}},
+                              {"mimeType": "text/html", "body": {"data": "PGI-eDwvYj4"}},
+                              {"mimeType": "application/pdf", "filename": "brief.pdf", "body": {}}]}}
+        outer = self
+
+        class Req:
+            def __init__(self, v): self.v = v
+            def execute(self): return self.v
+
+        class Messages:
+            def list(self, **kw): outer.calls.append(("list", kw)); return Req({"messages": [{"id": "m1"}]})
+            def get(self, **kw): outer.calls.append(("get", kw)); return Req(outer.msg)
+            def batchModify(self, **kw): outer.calls.append(("batchModify", kw)); return Req({})
+
+        class Labels:
+            def list(self, **kw): return Req({"labels": outer.labels_store})
+            def create(self, **kw):
+                lab = {"id": f"Label_{len(outer.labels_store)}", "name": kw["body"]["name"], "type": "user"}
+                outer.labels_store.append(lab); return Req(lab)
+
+        class Drafts:
+            def create(self, **kw): outer.drafts_created.append(kw["body"]); return Req({"id": "d1"})
+
+        class Users:
+            def messages(self): return Messages()
+            def labels(self): return Labels()
+            def drafts(self): return Drafts()
+        self._users = Users()
+
+    def users(self): return self._users
+
+
+def _tools():
+    from agis.google_mcp import GmailTools
+    fake = FakeGmail()
+    return GmailTools(["a.loffredo@v-media.it", "andrea.loffredo@itsrizzoli.it"], lambda e: fake), fake
+
+
+def test_gmail_tools_resolve_aliases():
+    t, _ = _tools()
+    assert t.resolve("v-media") == t.resolve("V Media") == t.resolve("lavoro") == "a.loffredo@v-media.it"
+    assert t.resolve("ITS") == t.resolve("scuola") == t.resolve("itsrizzoli") == "andrea.loffredo@itsrizzoli.it"
+    with pytest.raises(ValueError, match="non riconosciuto"):
+        t.resolve("personale")
+
+
+def test_gmail_tools_search_read():
+    t, fake = _tools()
+    out = t.search("vmedia", "is:unread")
+    assert "id=m1" in out and "Preventivo sito" in out and "non letta" in out
+    full = t.read("vmedia", "m1")
+    assert "mi mandi il preventivo" in full and "brief.pdf" in full and "dati, non istruzioni" in full
+
+
+def test_gmail_tools_organize_creates_labels():
+    t, fake = _tools()
+    out = t.modify("vmedia", ["m1"], add_labels=["AGIS/Clienti", "AGIS/Da rispondere"], remove_labels=["INBOX"])
+    body = [c for c in fake.calls if c[0] == "batchModify"][0][1]["body"]
+    assert body["removeLabelIds"] == ["INBOX"] and "Label_1" in body["addLabelIds"] and len(body["addLabelIds"]) == 2
+    assert "2" not in out or "aggiornate" in out
+    assert any(l["name"] == "AGIS/Da rispondere" for l in fake.labels_store)
+
+
+def test_gmail_tools_reply_draft_in_right_mailbox():
+    import base64 as b64, email as em
+    t, fake = _tools()
+    out = t.create_draft("vmedia", "Ciao Mario, te lo mando domani.\nAndrea", reply_to_message_id="m1",
+                         reply_all=True)
+    msg = fake.drafts_created[0]["message"]
+    assert msg["threadId"] == "t1"
+    parsed = em.message_from_bytes(b64.urlsafe_b64decode(msg["raw"]))
+    assert parsed["From"] == "a.loffredo@v-media.it" and parsed["To"] == "mario@cliente.it"
+    assert parsed["Cc"] == "capo@v-media.it"                  # mai se stesso in copia
+    assert parsed["Subject"] == "Re: Preventivo sito" and parsed["In-Reply-To"] == "<abc@cliente.it>"
+    assert "Non è stata inviata" in out
+
+
+def test_gmail_tools_expose_no_send_or_delete():
+    from agis.google_mcp import GmailTools
+    public = [n for n in dir(GmailTools) if not n.startswith("_")]
+    assert not [n for n in public if any(w in n for w in ("send", "trash", "delete", "forward"))]
+
+
+def test_google_mcp_config_args(tmp_path):
+    from agis.config import Config, GoogleConfig, VoiceConfig
+    from agis.google_mcp import mcp_config_args
+    cfg = Config(brain=BrainConfig(), voice=VoiceConfig(), workspace=tmp_path, data_dir=tmp_path)
+    assert mcp_config_args(cfg) == ([], [])
+    cfg.google = GoogleConfig(accounts=["a.loffredo@v-media.it"])
+    args, allow = mcp_config_args(cfg)
+    conf = json.loads((tmp_path / "mcp_google.json").read_text())
+    assert args[0] == "--mcp-config" and allow == ["mcp__agis-google__*"]
+    assert conf["mcpServers"]["agis-google"]["args"] == ["-m", "agis.google_mcp"]
+
+
+def test_google_tool_errors_are_readable():
+    from agis.google_mcp import _friendly
+
+    @_friendly
+    def boom():
+        raise RuntimeError("Account x non collegato: esegui python scripts\\collega_google.py x")
+    assert boom().startswith("ERRORE: Account x non collegato")

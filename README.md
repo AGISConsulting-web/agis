@@ -45,6 +45,32 @@ file su Drive. Cosa **non** fa mai: cestinare, eliminare, condividere, segnare s
 mail e creare eventi sono spenti: si accendono in `config.toml` con `allow_send = true` e
 `allow_calendar_edit = true` nella sezione `[connectors]`.
 
+## Caselle di lavoro e scuola (V Media, ITS)
+
+Il connettore Gmail di claude.ai vede solo la Gmail personale. Per V Media e ITS AGIS ha un
+collegamento suo (`agis/google_mcp.py`) che lavora direttamente in quelle caselle: cerca,
+legge, etichetta/archivia e crea **bozze con il mittente giusto**. Non può inviare né
+cancellare: quegli strumenti non esistono proprio.
+
+Configurazione (una volta sola, gratuita):
+1. **Progetto Google Cloud** — su console.cloud.google.com, con l'account personale, crea il
+   progetto `AGIS`; in *API e servizi → Libreria* abilita **Gmail API**.
+2. **Schermata di consenso** — *Google Auth Platform*: nome app `AGIS`, pubblico **Esterno**.
+   In *Pubblico* premi **Pubblica app** (stato "In produzione": il collegamento non scade
+   ogni 7 giorni; la verifica Google non serve per uso personale).
+3. **Client** — *Client → Crea client → App desktop*, poi **Scarica JSON** e salvalo come
+   `data\google\client_secret.json`.
+4. In `config.toml` aggiungi la sezione `[google]` di `config.example.toml`, poi
+   `pip install -r requirements.txt`.
+5. Collega ogni account: `python scripts\collega_google.py a.loffredo@v-media.it` (e poi
+   quello ITS). Nel browser scegli quell'account; alla schermata "Google non ha verificato
+   questa app" → *Avanzate* → *Vai ad AGIS* → *Continua*. È la tua app: l'avviso è normale.
+6. Riavvia AGIS e chiedi "che mail ho su V Media?".
+
+Se compare "accesso bloccato dall'amministratore", quell'organizzazione blocca le app
+esterne: l'amministratore può autorizzare l'ID client di AGIS dalla Console di amministrazione
+(Sicurezza → Controlli API), altrimenti per quella casella resta l'inoltro.
+
 ## Il cervello condiviso
 
 App e task automatici (brief delle 6:00, bozze social del lunedì, radar prospect del
@@ -126,6 +152,7 @@ in `config.toml` metti `auth = "api_key"` e la chiave API Anthropic **del client
 - [x] Auto-miglioramento: revisione ogni domenica (Revisioni AGIS) applicata dopo il tuo ok
 - [x] Gmail, Calendar e Drive tramite i connettori claude.ai
 - [x] v0.4 — cervello sempre acceso, risposte in streaming, voce frase per frase
+- [x] v0.5 — caselle V Media e ITS collegate direttamente (bozze col mittente giusto)
 - [ ] Icona nell'area di notifica e avvio automatico con Windows
 - [ ] Brief del mattino letto ad alta voce alle 6:00
 - [ ] Parola di attivazione ("Ehi AGIS") senza tasti
