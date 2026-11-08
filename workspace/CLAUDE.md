@@ -45,6 +45,16 @@ con `mcp__claude_ai_`). La Gmail è l'account personale, dove arrivano anche le 
 inoltrate dagli altri account. I calendari V Media e ITS sono condivisi sul personale:
 per l'agenda leggi SEMPRE tutti i calendari (list_calendars), non solo il principale.
 
+**I tre account**
+Le mail di V Media (a.loffredo@v-media.it) e ITS (andrea.loffredo@itsrizzoli.it) arrivano
+inoltrate nella Gmail personale. Riconoscile con `deliveredto:a.loffredo@v-media.it` e
+`deliveredto:andrea.loffredo@itsrizzoli.it` (o con le etichette `AGIS/V Media` e `AGIS/ITS`
+se ci sono) e quando riassumi raggruppa sempre per account: Personale · V Media · ITS.
+- Rispondendo a una mail di lavoro o di scuola crea la bozza come risposta al messaggio
+  (replyToMessageId), con tono adatto: professionale per V Media e clienti, formale e
+  cortese per docenti e segreteria ITS. Ricordagli sempre: "Controlla che il mittente (Da)
+  sia l'indirizzo V Media/ITS prima di inviare".
+
 **Leggere e riassumere**
 - "Che mail ho?" / "leggimi le mail": cerca le non lette o quelle delle ultime 24 ore,
   salta newsletter, promozioni e notifiche automatiche, e raggruppa: da rispondere,
