@@ -36,6 +36,10 @@ class Memory:
         self._lock = threading.Lock()
         self._db = sqlite3.connect(db_path, check_same_thread=False)
         self._db.executescript(SCHEMA)
+        cols = {r[1] for r in self._db.execute("PRAGMA table_info(feedback)")}
+        if "synced" not in cols:  # database creato dalla v0.1
+            self._db.execute("ALTER TABLE feedback ADD COLUMN synced INTEGER NOT NULL DEFAULT 0")
+            self._db.commit()
         self.export_feedback()
 
     @staticmethod
@@ -62,6 +66,22 @@ class Memory:
             self._db.commit()
         self.export_feedback()
         return cur.lastrowid
+
+    def unsynced_feedback(self) -> list[tuple]:
+        """Feedback non ancora caricati su Notion: (id, ts, rating, note, testo risposta)."""
+        with self._lock:
+            return self._db.execute(
+                """SELECT f.id, f.ts, f.rating, f.note, m.text
+                   FROM feedback f LEFT JOIN messages m ON m.id = f.message_id
+                   WHERE f.synced = 0 ORDER BY f.id""").fetchall()
+
+    def mark_synced(self, ids: list[int]) -> None:
+        if not ids:
+            return
+        with self._lock:
+            self._db.executemany("UPDATE feedback SET synced = 1 WHERE id = ?",
+                                 [(i,) for i in ids])
+            self._db.commit()
 
     def recent_feedback(self, limit: int = 30) -> list[tuple]:
         with self._lock:

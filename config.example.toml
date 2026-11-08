@@ -22,3 +22,11 @@ whisper_model = "small"   # tiny/base = più veloce, medium = più preciso
 language = "it"
 piper_model = "voices/it_IT-paola-medium.onnx"
 sample_rate = 16000
+
+[notion]
+# Il cervello condiviso: le stesse pagine Notion che usano brief, bozze social e radar.
+enabled = true
+memoria_page = "https://app.notion.com/p/41246a25c90a81348e29ea2a09be3681"
+feedback_ds = "collection://5f202c26-9a32-47a3-8e0c-b3e171a40bf6"
+brief_ds = "collection://1d368942-cbad-4c2d-90a8-4e50eb016388"
+pull_every_min = 120      # ogni quanto riscaricare memoria, feedback e brief

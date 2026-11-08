@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 import traceback
 from pathlib import Path
 
 from . import config as config_mod
 from .brain import Brain, BrainError
 from .memory import Memory
+from .sync import NotionSync
 
 UI = Path(__file__).resolve().parent / "ui" / "index.html"
 
@@ -21,11 +23,36 @@ class Api:
         self._memory = Memory(cfg.data_dir / "agis.db",
                              cfg.workspace / "memoria" / "feedback.md")
         self._brain = Brain(cfg.brain, cfg.workspace)
+        self._sync = NotionSync(cfg.notion, self._brain, self._memory,
+                                cfg.workspace / "memoria" / "notion.md")
         self._window = None
         self._busy = threading.Lock()
         self._recorder = self._stt = self._tts = None
         if cfg.voice.enabled:
             threading.Thread(target=self._load_voice, daemon=True).start()
+        if cfg.notion.enabled:
+            threading.Thread(target=self._sync_loop, daemon=True).start()
+
+    # --- cervello condiviso (Notion) ---------------------------------------
+    def _sync_loop(self) -> None:
+        """All'avvio e poi ogni pull_every_min: invia feedback in sospeso e scarica memoria/brief."""
+        while True:
+            self._sync_now()
+            time.sleep(max(15, self._cfg.notion.pull_every_min) * 60)
+
+    def _sync_now(self) -> None:
+        sent = self._sync.push_feedback()
+        ok = self._sync.pull()
+        if ok:
+            extra = f" · {sent} feedback inviati" if sent else ""
+            self._status(f"Cervello aggiornato da Notion alle {time.strftime('%H:%M')}{extra}")
+        else:
+            self._status("Notion non raggiungibile: uso la memoria locale")
+
+    def sync_notion(self) -> None:
+        """Pulsante "Aggiorna" della finestra."""
+        self._status("Aggiorno il cervello da Notion…")
+        threading.Thread(target=self._sync_now, daemon=True).start()
 
     # --- voce ---------------------------------------------------------------
     def _load_voice(self) -> None:
@@ -92,6 +119,11 @@ class Api:
     def feedback(self, message_id: int, rating: int, note: str = "") -> None:
         self._memory.add_feedback(message_id, int(rating), note or "")
         self._status("Feedback salvato: lo userò da ora in poi")
+        if self._cfg.notion.enabled:
+            def push():
+                if self._sync.push_feedback():
+                    self._status("Feedback salvato anche su Notion")
+            threading.Thread(target=push, daemon=True).start()
 
     def new_session(self) -> None:
         self._brain.new_session()

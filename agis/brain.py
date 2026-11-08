@@ -60,10 +60,11 @@ class Brain:
             env.pop("ANTHROPIC_API_KEY", None)
         return env
 
-    def build_command(self, voice: bool) -> list[str]:
+    def build_command(self, voice: bool, resume: bool = True,
+                      system: str | None = None) -> list[str]:
         exe = shutil.which(self.cfg.claude_cmd) or self.cfg.claude_cmd
         cmd = [exe, "-p", "--output-format", "json"]
-        if self.session_id:
+        if resume and self.session_id:
             cmd += ["--resume", self.session_id]
         if self.cfg.model:
             cmd += ["--model", self.cfg.model]
@@ -71,13 +72,21 @@ class Brain:
             cmd += ["--allowedTools", *self.cfg.allowed_tools]
         if self.cfg.disallowed_tools:
             cmd += ["--disallowedTools", *self.cfg.disallowed_tools]
-        cmd += ["--append-system-prompt", MODE_VOICE if voice else MODE_TEXT]
+        cmd += ["--append-system-prompt", system or (MODE_VOICE if voice else MODE_TEXT)]
         return cmd
 
     def ask(self, prompt: str, voice: bool = False) -> Reply:
+        """Messaggio della conversazione: continua la sessione in corso."""
+        return self._run(self.build_command(voice), prompt, keep_session=True)
+
+    def oneshot(self, prompt: str, system: str) -> Reply:
+        """Lavoro di servizio (es. sincronizzare Notion): sessione a parte, non tocca la chat."""
+        return self._run(self.build_command(False, resume=False, system=system),
+                         prompt, keep_session=False)
+
+    def _run(self, cmd: list[str], prompt: str, keep_session: bool) -> Reply:
         # Il messaggio passa da stdin: niente problemi di virgolette o caratteri
         # speciali con il lanciatore claude.cmd di Windows.
-        cmd = self.build_command(voice)
         try:
             proc = self.runner(
                 cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
@@ -89,9 +98,9 @@ class Brain:
                 "claude_cmd in config.toml.") from e
         except subprocess.TimeoutExpired as e:
             raise BrainError("Claude Code non ha risposto in tempo.") from e
-        return self.parse(proc)
+        return self.parse(proc, keep_session=keep_session)
 
-    def parse(self, proc: subprocess.CompletedProcess) -> Reply:
+    def parse(self, proc: subprocess.CompletedProcess, keep_session: bool = True) -> Reply:
         out = (proc.stdout or "").strip()
         try:
             data = json.loads(out.splitlines()[-1] if out else "")
@@ -101,7 +110,7 @@ class Brain:
         if isinstance(data, list):  # alcune versioni restituiscono la lista dei messaggi
             data = next((d for d in reversed(data) if d.get("type") == "result"), {})
         sid = data.get("session_id")
-        if sid:
+        if sid and keep_session:
             self.session_id = sid
         text = data.get("result") or ""
         is_error = bool(data.get("is_error")) or proc.returncode != 0

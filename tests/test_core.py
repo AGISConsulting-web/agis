@@ -85,3 +85,85 @@ def test_js_api_exposes_only_methods(tmp_path):
     api._window = object()
     public = [n for n in dir(api) if not n.startswith("_")]
     assert public and all(inspect.ismethod(getattr(api, n)) for n in public), public
+
+
+def test_oneshot_does_not_touch_chat_session(tmp_path):
+    calls = []
+    out = json.dumps({"result": "ok", "session_id": "servizio"})
+    b = Brain(BrainConfig(), tmp_path, runner=fake_runner(out, calls=calls))
+    b.session_id = "chat"
+    b.oneshot("sync", "sistema")
+    assert b.session_id == "chat"
+    assert "--resume" not in calls[0][0] and "sistema" in calls[0][0]
+
+
+def test_memory_migrates_v01_db_and_tracks_sync(tmp_path):
+    import sqlite3
+    db = tmp_path / "old.db"
+    con = sqlite3.connect(db)
+    con.executescript("""CREATE TABLE feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL,
+        message_id INTEGER, rating INTEGER NOT NULL, note TEXT);
+        INSERT INTO feedback (ts, rating, note) VALUES ('2026-11-08T10:00:00', -1, 'vecchio');""")
+    con.commit(); con.close()
+    m = Memory(db, tmp_path / "fb.md")
+    rows = m.unsynced_feedback()
+    assert [r[3] for r in rows] == ["vecchio"]
+    m.mark_synced([rows[0][0]])
+    assert m.unsynced_feedback() == []
+
+
+def test_notion_sync_pull_and_push(tmp_path):
+    from datetime import date
+    from agis.config import NotionConfig
+    from agis.sync import NotionSync
+    replies = iter([
+        json.dumps({"result": "Ecco:\n# Memoria AGIS\nLoffre\n# Feedback attivi\n- x\n# Brief di oggi\nok"}),
+        json.dumps({"result": "OK 2"}),
+        json.dumps({"result": "ERRORE notion giù"}),
+    ])
+    calls = []
+
+    def runner(cmd, **kw):
+        calls.append(kw["input"])
+        return subprocess.CompletedProcess(cmd, 0, next(replies), "")
+
+    cache = tmp_path / "memoria" / "notion.md"
+    mem = Memory(tmp_path / "db", tmp_path / "fb.md")
+    s = NotionSync(NotionConfig(), Brain(BrainConfig(), tmp_path, runner=runner), mem, cache)
+
+    assert s.pull(date(2026, 11, 9))
+    text = cache.read_text(encoding="utf-8")
+    assert text.split("-->\n\n", 1)[1].startswith("# Memoria AGIS") and "Ecco" not in text
+    assert "9 novembre 2026" in calls[0]
+
+    a = mem.add_message("agis", "risposta lunga")
+    mem.add_feedback(a, -1, "più breve")
+    mem.add_feedback(a, 1, "")
+    assert s.push_feedback() == 2
+    assert "più breve" in calls[1] and "👎 Da correggere" in calls[1] and "OK 2" in calls[1]
+    assert mem.unsynced_feedback() == []
+
+    mem.add_feedback(a, -1, "altro")
+    assert s.push_feedback() == 0          # risposta ERRORE: resta in coda
+    assert len(mem.unsynced_feedback()) == 1
+
+
+def test_config_loads_notion_section(tmp_path):
+    from agis.config import load
+    p = tmp_path / "config.toml"
+    p.write_text('[notion]\nenabled = false\npull_every_min = 30\n', encoding="utf-8")
+    cfg = load(p)
+    assert cfg.notion.enabled is False and cfg.notion.pull_every_min == 30
+    assert "mcp__notion" in cfg.brain.allowed_tools
+
+
+def test_notion_sync_keeps_old_cache_when_notion_down(tmp_path):
+    from agis.config import NotionConfig
+    from agis.sync import NotionSync
+    down = json.dumps({"result": "# Memoria AGIS\nNON DISPONIBILE\n# Feedback attivi\nNON DISPONIBILE\n# Brief di oggi\nNON DISPONIBILE"})
+    cache = tmp_path / "notion.md"
+    cache.write_text("copia buona", encoding="utf-8")
+    s = NotionSync(NotionConfig(), Brain(BrainConfig(), tmp_path, runner=fake_runner(down)),
+                   Memory(tmp_path / "db", tmp_path / "fb.md"), cache)
+    assert s.pull() is False
+    assert cache.read_text(encoding="utf-8") == "copia buona"

@@ -18,9 +18,19 @@ class BrainConfig:
     model: str = ""  # vuoto = modello predefinito di Claude Code
     timeout_s: int = 300
     allowed_tools: list[str] = field(default_factory=lambda: [
-        "WebSearch", "WebFetch", "Read", "Glob", "Grep", "Write", "Edit",
+        "WebSearch", "WebFetch", "Read", "Glob", "Grep", "Write", "Edit", "mcp__notion",
     ])
     disallowed_tools: list[str] = field(default_factory=lambda: ["Bash", "PowerShell"])
+
+
+@dataclass
+class NotionConfig:
+    """Il cervello condiviso: le stesse pagine che leggono i task automatici."""
+    enabled: bool = True
+    memoria_page: str = "https://app.notion.com/p/41246a25c90a81348e29ea2a09be3681"
+    feedback_ds: str = "collection://5f202c26-9a32-47a3-8e0c-b3e171a40bf6"
+    brief_ds: str = "collection://1d368942-cbad-4c2d-90a8-4e50eb016388"
+    pull_every_min: int = 120
 
 
 @dataclass
@@ -39,6 +49,7 @@ class Config:
     voice: VoiceConfig
     workspace: Path
     data_dir: Path
+    notion: NotionConfig = field(default_factory=NotionConfig)
 
 
 def load(path: Path | None = None) -> Config:
@@ -48,10 +59,12 @@ def load(path: Path | None = None) -> Config:
         raw = tomllib.loads(path.read_text(encoding="utf-8"))
     brain = BrainConfig(**raw.get("brain", {}))
     voice = VoiceConfig(**raw.get("voice", {}))
+    notion = NotionConfig(**raw.get("notion", {}))
     general = raw.get("general", {})
     workspace = ROOT / general.get("workspace", "workspace")
     data_dir = ROOT / general.get("data_dir", "data")
     data_dir.mkdir(parents=True, exist_ok=True)
     if not Path(voice.piper_model).is_absolute():
         voice.piper_model = str(ROOT / voice.piper_model)
-    return Config(brain=brain, voice=voice, workspace=workspace, data_dir=data_dir)
+    return Config(brain=brain, voice=voice, workspace=workspace, data_dir=data_dir,
+                  notion=notion)

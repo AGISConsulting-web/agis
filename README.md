@@ -14,13 +14,29 @@ account; voce e trascrizione girano gratis sul tuo PC.
 | Cervello | Claude Code (`claude -p`) con il tuo login Pro | PC + Anthropic |
 | Orecchie | faster-whisper (italiano) | PC, gratis |
 | Voce | Piper, voce italiana "Paola" (ripiego: voce di Windows) | PC, gratis |
-| Memoria | SQLite + `workspace/memoria/feedback.md` | PC |
+| Memoria | **Cervello condiviso su Notion** + copia locale in `workspace/memoria/` | Notion + PC |
 | Strumenti | server MCP: Notion (subito), Google (prossimo passo) | — |
 | App | finestra desktop (pywebview) + scorciatoia globale | PC |
 
 La cartella `workspace/` è il "cervello" vero e proprio: `CLAUDE.md` (personalità e regole),
 `.claude/skills/` (le cose che sa fare, che AGIS può ampliare da solo con la skill
-`crea-skill`), `memoria/` (feedback e note).
+`crea-skill`), `memoria/` (copia locale di memoria, feedback e brief).
+
+## Il cervello condiviso
+
+App e task automatici (brief delle 6:00, bozze social del lunedì, radar prospect del
+giovedì) usano le stesse tre fonti su Notion, sotto la pagina **Jarvis**:
+
+| Fonte | Cosa contiene | Chi scrive |
+|---|---|---|
+| **Memoria AGIS** | chi sei, clienti, account, preferenze, regole fisse | tu (e AGIS dopo il tuo ok) |
+| **Feedback AGIS** | correzioni e regole, con Ambito (Brief, Bozze social…) e Stato | tu, i 👍/👎 dell'app, AGIS quando lo correggi in chat |
+| **Brief giornalieri** | un brief per giorno | il task delle 6:00 |
+
+L'app all'avvio, ogni 2 ore e quando premi **⟳** carica su Notion i 👍/👎 in sospeso e
+riscarica memoria, feedback e brief di oggi in `workspace/memoria/notion.md`. Le risposte
+restano veloci e AGIS sa sempre cosa c'era nel brief. Se Notion non risponde, usa l'ultima
+copia buona. Per correggere AGIS ovunque basta una riga in Feedback AGIS.
 
 ## Installazione su Windows
 
@@ -79,6 +95,7 @@ in `config.toml` metti `auth = "api_key"` e la chiave API Anthropic **del client
 ## Roadmap
 
 - [x] v0.1 — chat + voce locale, memoria e feedback, Notion, skill che creano skill
+- [x] v0.2 — cervello condiviso su Notion con brief e task automatici
 - [ ] Google (Gmail, Calendar, Drive) come server MCP locale
 - [ ] Icona nell'area di notifica e avvio automatico con Windows
 - [ ] Brief del mattino letto ad alta voce alle 6:00
