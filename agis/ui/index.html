@@ -66,13 +66,14 @@
     e.preventDefault();
     const t = document.getElementById('t'); const v = t.value.trim();
     if (!v) return;
+    if (!api()) { setStatus('AGIS si sta ancora avviando, riprova tra qualche secondo'); return; }
     addMessage('user', v, null); t.value = ''; api().send(v);
   };
   document.getElementById('t').onkeydown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('f').requestSubmit(); }
   };
-  document.getElementById('mic').onclick = () => api().toggle_listening();
-  document.getElementById('new').onclick = () => { log.innerHTML = ''; api().new_session(); };
+  document.getElementById('mic').onclick = () => api() && api().toggle_listening();
+  document.getElementById('new').onclick = () => { log.innerHTML = ''; api() && api().new_session(); };
   window.addEventListener('pywebviewready', () => setStatus('Pronto'));
 </script>
 </body>

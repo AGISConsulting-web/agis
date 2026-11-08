@@ -17,13 +17,13 @@ class Api:
     """Metodi chiamabili dalla pagina (window.pywebview.api.*)."""
 
     def __init__(self, cfg: config_mod.Config):
-        self.cfg = cfg
-        self.memory = Memory(cfg.data_dir / "agis.db",
+        self._cfg = cfg
+        self._memory = Memory(cfg.data_dir / "agis.db",
                              cfg.workspace / "memoria" / "feedback.md")
-        self.brain = Brain(cfg.brain, cfg.workspace)
-        self.window = None
+        self._brain = Brain(cfg.brain, cfg.workspace)
+        self._window = None
         self._busy = threading.Lock()
-        self.recorder = self.stt = self.tts = None
+        self._recorder = self._stt = self._tts = None
         if cfg.voice.enabled:
             threading.Thread(target=self._load_voice, daemon=True).start()
 
@@ -34,29 +34,29 @@ class Api:
             from .voice.recorder import Recorder
             from .voice.stt import SpeechToText
             from .voice.tts import TextToSpeech
-            self.recorder = Recorder(self.cfg.voice.sample_rate)
-            self.stt = SpeechToText(self.cfg.voice.whisper_model, self.cfg.voice.language)
-            self.tts = TextToSpeech(self.cfg.voice.piper_model)
-            self._status(f"Pronto · voce {self.tts.engine} · {self.cfg.voice.hotkey} per parlare")
+            self._recorder = Recorder(self._cfg.voice.sample_rate)
+            self._stt = SpeechToText(self._cfg.voice.whisper_model, self._cfg.voice.language)
+            self._tts = TextToSpeech(self._cfg.voice.piper_model)
+            self._status(f"Pronto · voce {self._tts.engine} · {self._cfg.voice.hotkey} per parlare")
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
             self._status(f"Voce non disponibile: {e}")
 
     def toggle_listening(self) -> None:
-        if not self.recorder:
+        if not self._recorder:
             self._status("La voce non è ancora pronta")
             return
-        if self.tts:
-            self.tts.stop()
-        if not self.recorder.recording:
-            self.recorder.start()
+        if self._tts:
+            self._tts.stop()
+        if not self._recorder.recording:
+            self._recorder.start()
             self._js("setListening(true)")
             self._status("Ti ascolto… premi di nuovo per finire")
             return
-        audio = self.recorder.stop()
+        audio = self._recorder.stop()
         self._js("setListening(false)")
         self._status("Trascrivo…")
-        text = self.stt.transcribe(audio)
+        text = self._stt.transcribe(audio)
         if not text:
             self._status("Non ho sentito niente")
             return
@@ -74,33 +74,33 @@ class Api:
             self._status("Sto ancora pensando alla richiesta precedente")
             return
         try:
-            self.memory.add_message("user", text, self.brain.session_id)
+            self._memory.add_message("user", text, self._brain.session_id)
             self._status("Penso…")
             try:
-                reply = self.brain.ask(text, voice=voice)
+                reply = self._brain.ask(text, voice=voice)
                 answer = reply.text
             except BrainError as e:
                 answer = f"⚠️ {e}"
-            mid = self.memory.add_message("agis", answer, self.brain.session_id)
+            mid = self._memory.add_message("agis", answer, self._brain.session_id)
             self._js(f"addMessage('agis', {json.dumps(answer)}, {mid})")
             self._status("Pronto")
-            if voice and self.tts:
-                self.tts.speak(answer)
+            if voice and self._tts:
+                self._tts.speak(answer)
         finally:
             self._busy.release()
 
     def feedback(self, message_id: int, rating: int, note: str = "") -> None:
-        self.memory.add_feedback(message_id, int(rating), note or "")
+        self._memory.add_feedback(message_id, int(rating), note or "")
         self._status("Feedback salvato: lo userò da ora in poi")
 
     def new_session(self) -> None:
-        self.brain.new_session()
+        self._brain.new_session()
         self._status("Nuova conversazione")
 
     # --- utilità ------------------------------------------------------------
     def _js(self, code: str) -> None:
-        if self.window:
-            self.window.evaluate_js(code)
+        if self._window:
+            self._window.evaluate_js(code)
 
     def _status(self, text: str) -> None:
         self._js(f"setStatus({json.dumps(text)})")
@@ -113,7 +113,7 @@ def main() -> None:
     api = Api(cfg)
     window = webview.create_window(
         "AGIS", UI.as_uri(), js_api=api, width=460, height=720, min_size=(360, 480))
-    api.window = window
+    api._window = window
 
     if cfg.voice.enabled:
         try:

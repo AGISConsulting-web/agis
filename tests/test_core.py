@@ -72,3 +72,16 @@ def test_memory_feedback_export(tmp_path):
 def test_clean_for_speech():
     s = "**Ciao** ecco il [link](https://x.it) 🎯 e https://a.b/c"
     assert clean_for_speech(s) == "Ciao ecco il link e"
+
+
+def test_js_api_exposes_only_methods(tmp_path):
+    """pywebview esplora ricorsivamente gli attributi pubblici: devono essere solo metodi."""
+    import inspect
+    from agis import app
+    from agis.config import Config, VoiceConfig
+    cfg = Config(brain=BrainConfig(), voice=VoiceConfig(enabled=False),
+                 workspace=tmp_path / "ws", data_dir=tmp_path)
+    api = app.Api(cfg)
+    api._window = object()
+    public = [n for n in dir(api) if not n.startswith("_")]
+    assert public and all(inspect.ismethod(getattr(api, n)) for n in public), public
