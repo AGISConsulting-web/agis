@@ -167,3 +167,31 @@ def test_notion_sync_keeps_old_cache_when_notion_down(tmp_path):
                    Memory(tmp_path / "db", tmp_path / "fb.md"), cache)
     assert s.pull() is False
     assert cache.read_text(encoding="utf-8") == "copia buona"
+
+
+def test_connector_rules_default_are_safe():
+    from agis.config import ConnectorsConfig
+    allow, deny = ConnectorsConfig().rules()
+    assert "mcp__claude_ai_Gmail__*" in allow and "mcp__claude_ai_Google_Calendar__*" in allow
+    for pattern in ("mcp__*send*", "mcp__*trash*", "mcp__*delete*", "mcp__*create_event*"):
+        assert pattern in deny
+
+
+def test_connector_rules_opt_in_and_disabled():
+    from agis.config import ConnectorsConfig
+    _, deny = ConnectorsConfig(allow_send=True, allow_calendar_edit=True).rules()
+    assert "mcp__*send*" not in deny and "mcp__*create_event*" not in deny
+    assert "mcp__*trash*" in deny and "mcp__*delete*" in deny   # questi restano sempre vietati
+    allow, deny = ConnectorsConfig(enabled=False).rules()
+    assert allow == [] and deny == ["mcp__claude_ai_*"]
+
+
+def test_brain_passes_connector_rules(tmp_path):
+    calls = []
+    b = Brain(BrainConfig(), tmp_path, runner=fake_runner(json.dumps({"result": "ok"}), calls=calls),
+              extra_allowed=["mcp__claude_ai_Gmail__*"], extra_denied=["mcp__*send*"])
+    b.ask("x")
+    cmd = calls[0][0]
+    allow_at, deny_at = cmd.index("--allowedTools"), cmd.index("--disallowedTools")
+    assert "mcp__claude_ai_Gmail__*" in cmd[allow_at:deny_at]
+    assert "mcp__*send*" in cmd[deny_at:]

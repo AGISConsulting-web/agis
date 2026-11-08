@@ -15,12 +15,25 @@ account; voce e trascrizione girano gratis sul tuo PC.
 | Orecchie | faster-whisper (italiano) | PC, gratis |
 | Voce | Piper, voce italiana "Paola" (ripiego: voce di Windows) | PC, gratis |
 | Memoria | **Cervello condiviso su Notion** + copia locale in `workspace/memoria/` | Notion + PC |
-| Strumenti | server MCP: Notion (subito), Google (prossimo passo) | — |
+| Strumenti | i tuoi connettori claude.ai: Gmail, Google Calendar, Google Drive, Notion | — |
 | App | finestra desktop (pywebview) + scorciatoia globale | PC |
 
 La cartella `workspace/` è il "cervello" vero e proprio: `CLAUDE.md` (personalità e regole),
 `.claude/skills/` (le cose che sa fare, che AGIS può ampliare da solo con la skill
 `crea-skill`), `memoria/` (copia locale di memoria, feedback e brief).
+
+## Gmail, calendari e Drive
+
+AGIS usa **gli stessi connettori che hai su claude.ai** (Impostazioni → Connettori): Claude
+Code li vede da solo quando il login è con l'abbonamento, senza chiavi Google. Per vederli:
+`cd workspace`, `claude`, poi `/mcp`: devono comparire `claude.ai Gmail`,
+`claude.ai Google Calendar`, `claude.ai Google Drive`.
+
+Cosa può fare di base: leggere, cercare e riassumere le mail, organizzarle con etichette
+`AGIS/…` e archiviarle, preparare bozze; leggere tutti i calendari; cercare, leggere e creare
+file su Drive. Cosa **non** fa mai: cestinare, eliminare, condividere, segnare spam. Inviare
+mail e creare eventi sono spenti: si accendono in `config.toml` con `allow_send = true` e
+`allow_calendar_edit = true` nella sezione `[connectors]`.
 
 ## Il cervello condiviso
 
@@ -101,7 +114,7 @@ in `config.toml` metti `auth = "api_key"` e la chiave API Anthropic **del client
 - [x] v0.1 — chat + voce locale, memoria e feedback, Notion, skill che creano skill
 - [x] v0.2 — cervello condiviso su Notion con brief e task automatici
 - [x] Auto-miglioramento: revisione ogni domenica (Revisioni AGIS) applicata dopo il tuo ok
-- [ ] Google (Gmail, Calendar, Drive) come server MCP locale
+- [x] Gmail, Calendar e Drive tramite i connettori claude.ai
 - [ ] Icona nell'area di notifica e avvio automatico con Windows
 - [ ] Brief del mattino letto ad alta voce alle 6:00
 - [ ] Parola di attivazione ("Ehi AGIS") senza tasti

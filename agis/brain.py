@@ -40,11 +40,16 @@ MODE_TEXT = "Modalita chat: la risposta viene mostrata in una finestra di chat, 
 
 class Brain:
     def __init__(self, cfg: BrainConfig, workspace: Path,
-                 runner: Callable[..., subprocess.CompletedProcess] = subprocess.run):
+                 runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+                 extra_allowed: list[str] | None = None,
+                 extra_denied: list[str] | None = None):
         self.cfg = cfg
         self.workspace = workspace
         self.runner = runner
         self.session_id: str | None = None
+        # Regole dei connettori claude.ai (Gmail, Calendar, Drive…), vedi ConnectorsConfig.
+        self.extra_allowed = list(extra_allowed or [])
+        self.extra_denied = list(extra_denied or [])
 
     def new_session(self) -> None:
         self.session_id = None
@@ -68,10 +73,12 @@ class Brain:
             cmd += ["--resume", self.session_id]
         if self.cfg.model:
             cmd += ["--model", self.cfg.model]
-        if self.cfg.allowed_tools:
-            cmd += ["--allowedTools", *self.cfg.allowed_tools]
-        if self.cfg.disallowed_tools:
-            cmd += ["--disallowedTools", *self.cfg.disallowed_tools]
+        allowed = [*self.cfg.allowed_tools, *self.extra_allowed]
+        denied = [*self.cfg.disallowed_tools, *self.extra_denied]
+        if allowed:
+            cmd += ["--allowedTools", *allowed]
+        if denied:
+            cmd += ["--disallowedTools", *denied]
         cmd += ["--append-system-prompt", system or (MODE_VOICE if voice else MODE_TEXT)]
         return cmd
 

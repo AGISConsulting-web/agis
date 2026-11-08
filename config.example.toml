@@ -30,3 +30,11 @@ memoria_page = "https://app.notion.com/p/41246a25c90a81348e29ea2a09be3681"
 feedback_ds = "collection://5f202c26-9a32-47a3-8e0c-b3e171a40bf6"
 brief_ds = "collection://1d368942-cbad-4c2d-90a8-4e50eb016388"
 pull_every_min = 120      # ogni quanto riscaricare memoria, feedback e brief
+
+[connectors]
+# I connettori del tuo account claude.ai (claude.ai → Impostazioni → Connettori).
+# Claude Code li vede da solo quando il login è con l'abbonamento.
+enabled = true
+servers = ["Gmail", "Google_Calendar", "Google_Drive", "Notion"]
+allow_send = false            # true = AGIS può inviare/rispondere/inoltrare mail (di base: solo bozze)
+allow_calendar_edit = false   # true = AGIS può creare e modificare eventi (di base: solo lettura)

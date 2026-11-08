@@ -22,7 +22,8 @@ class Api:
         self._cfg = cfg
         self._memory = Memory(cfg.data_dir / "agis.db",
                              cfg.workspace / "memoria" / "feedback.md")
-        self._brain = Brain(cfg.brain, cfg.workspace)
+        allow, deny = cfg.connectors.rules()
+        self._brain = Brain(cfg.brain, cfg.workspace, extra_allowed=allow, extra_denied=deny)
         self._sync = NotionSync(cfg.notion, self._brain, self._memory,
                                 cfg.workspace / "memoria" / "notion.md")
         self._window = None

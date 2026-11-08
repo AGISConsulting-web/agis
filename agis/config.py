@@ -23,6 +23,43 @@ class BrainConfig:
     disallowed_tools: list[str] = field(default_factory=lambda: ["Bash", "PowerShell"])
 
 
+# Azioni che AGIS non fa mai da solo, su nessun connettore (le regole di divieto vincono
+# sempre su quelle di permesso). Se il nome reale di uno strumento non corrisponde, lo
+# strumento resta semplicemente non disponibile: il sistema sbaglia sempre dal lato sicuro.
+ALWAYS_DENY = [
+    "mcp__*trash*", "mcp__*delete*", "mcp__*share_file*", "mcp__*permission*",
+    "mcp__*publish*", "mcp__*remove*", "mcp__*cancel*", "mcp__*spam*",
+]
+SEND_DENY = ["mcp__*send*", "mcp__*reply*", "mcp__*forward*"]
+CALENDAR_EDIT_DENY = ["mcp__*create_event*", "mcp__*update_event*", "mcp__*respond_to_event*"]
+
+
+@dataclass
+class ConnectorsConfig:
+    """I connettori del tuo account claude.ai (Gmail, Calendar, Drive…).
+
+    Claude Code li vede da solo quando il login è con l'abbonamento: i loro strumenti
+    si chiamano mcp__claude_ai_<Nome>__<strumento>. Qui decidi quali AGIS può usare.
+    """
+    enabled: bool = True
+    servers: list[str] = field(default_factory=lambda: [
+        "Gmail", "Google_Calendar", "Google_Drive", "Notion",
+    ])
+    allow_send: bool = False           # inviare/rispondere/inoltrare mail (di base: solo bozze)
+    allow_calendar_edit: bool = False  # creare o modificare eventi (di base: solo lettura)
+
+    def rules(self) -> tuple[list[str], list[str]]:
+        if not self.enabled:
+            return [], ["mcp__claude_ai_*"]
+        allow = [f"mcp__claude_ai_{s}__*" for s in self.servers]
+        deny = list(ALWAYS_DENY)
+        if not self.allow_send:
+            deny += SEND_DENY
+        if not self.allow_calendar_edit:
+            deny += CALENDAR_EDIT_DENY
+        return allow, deny
+
+
 @dataclass
 class NotionConfig:
     """Il cervello condiviso: le stesse pagine che leggono i task automatici."""
@@ -50,6 +87,7 @@ class Config:
     workspace: Path
     data_dir: Path
     notion: NotionConfig = field(default_factory=NotionConfig)
+    connectors: ConnectorsConfig = field(default_factory=ConnectorsConfig)
 
 
 def load(path: Path | None = None) -> Config:
@@ -60,6 +98,7 @@ def load(path: Path | None = None) -> Config:
     brain = BrainConfig(**raw.get("brain", {}))
     voice = VoiceConfig(**raw.get("voice", {}))
     notion = NotionConfig(**raw.get("notion", {}))
+    connectors = ConnectorsConfig(**raw.get("connectors", {}))
     general = raw.get("general", {})
     workspace = ROOT / general.get("workspace", "workspace")
     data_dir = ROOT / general.get("data_dir", "data")
@@ -67,4 +106,4 @@ def load(path: Path | None = None) -> Config:
     if not Path(voice.piper_model).is_absolute():
         voice.piper_model = str(ROOT / voice.piper_model)
     return Config(brain=brain, voice=voice, workspace=workspace, data_dir=data_dir,
-                  notion=notion)
+                  notion=notion, connectors=connectors)
