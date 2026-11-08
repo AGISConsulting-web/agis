@@ -94,7 +94,7 @@ def load(path: Path | None = None) -> Config:
     path = path or ROOT / "config.toml"
     raw: dict = {}
     if path.exists():
-        raw = tomllib.loads(path.read_text(encoding="utf-8"))
+        raw = tomllib.loads(path.read_text(encoding="utf-8-sig"))  # regge anche i file salvati con BOM
     brain = BrainConfig(**raw.get("brain", {}))
     voice = VoiceConfig(**raw.get("voice", {}))
     notion = NotionConfig(**raw.get("notion", {}))
