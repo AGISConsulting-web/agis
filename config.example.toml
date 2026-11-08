@@ -10,7 +10,7 @@ data_dir = "data"         # database locale delle conversazioni
 auth = "abbonamento"
 api_key = ""
 claude_cmd = "claude"
-model = ""                # vuoto = modello predefinito di Claude Code
+model = "sonnet"          # "sonnet" = veloce; "opus" = più ragionato ma più lento; "" = predefinito
 timeout_s = 300
 allowed_tools = ["WebSearch", "WebFetch", "Read", "Glob", "Grep", "Write", "Edit", "mcp__notion"]
 disallowed_tools = ["Bash", "PowerShell"]

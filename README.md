@@ -11,7 +11,7 @@ account; voce e trascrizione girano gratis sul tuo PC.
 
 | Pezzo | Cosa usa | Dove gira |
 |---|---|---|
-| Cervello | Claude Code (`claude -p`) con il tuo login Pro | PC + Anthropic |
+| Cervello | Claude Code con il tuo login Pro, **sempre acceso** durante la chat (risposte in streaming) | PC + Anthropic |
 | Orecchie | faster-whisper (italiano) | PC, gratis |
 | Voce | Piper, voce italiana "Paola" (ripiego: voce di Windows) | PC, gratis |
 | Memoria | **Cervello condiviso su Notion** + copia locale in `workspace/memoria/` | Notion + PC |
@@ -21,6 +21,16 @@ account; voce e trascrizione girano gratis sul tuo PC.
 La cartella `workspace/` è il "cervello" vero e proprio: `CLAUDE.md` (personalità e regole),
 `.claude/skills/` (le cose che sa fare, che AGIS può ampliare da solo con la skill
 `crea-skill`), `memoria/` (copia locale di memoria, feedback e brief).
+
+## Velocità
+
+- Il cervello resta acceso per tutta la conversazione: i connettori si collegano una volta sola
+  e il testo compare mentre AGIS lo scrive. A voce legge ogni frase appena è pronta.
+- Per risposte ancora più rapide in `config.toml` metti `model = "sonnet"` (più veloce di Opus
+  e consuma meno del piano Pro).
+- Spegni i connettori che AGIS non usa: `cd workspace`, `claude`, `/mcp`, e disattiva per
+  questo progetto Canva, Figma, Higgsfield, Slack, Claude Docs. Meno strumenti = avvio più
+  veloce e risposte più leggere.
 
 ## Gmail, calendari e Drive
 
@@ -115,6 +125,7 @@ in `config.toml` metti `auth = "api_key"` e la chiave API Anthropic **del client
 - [x] v0.2 — cervello condiviso su Notion con brief e task automatici
 - [x] Auto-miglioramento: revisione ogni domenica (Revisioni AGIS) applicata dopo il tuo ok
 - [x] Gmail, Calendar e Drive tramite i connettori claude.ai
+- [x] v0.4 — cervello sempre acceso, risposte in streaming, voce frase per frase
 - [ ] Icona nell'area di notifica e avvio automatico con Windows
 - [ ] Brief del mattino letto ad alta voce alle 6:00
 - [ ] Parola di attivazione ("Ehi AGIS") senza tasti

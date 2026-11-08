@@ -16,6 +16,7 @@
   .msg { max-width:88%; padding:10px 12px; border-radius:12px; white-space:pre-wrap; word-wrap:break-word; }
   .user { align-self:flex-end; background:var(--user); }
   .agis { align-self:flex-start; background:var(--panel); border:1px solid var(--line); }
+  .typing { opacity:.85; }
   .fb { display:flex; gap:6px; margin-top:6px; }
   .fb button { font-size:13px; padding:2px 8px; }
   #status { padding:4px 16px; color:var(--muted); font-size:12px; min-height:20px; }
@@ -44,22 +45,48 @@
   function setStatus(s) { document.getElementById('status').textContent = s; }
   function setListening(on) { document.getElementById('mic').classList.toggle('on', on); }
 
+  function attachFeedback(d, id) {
+    const fb = document.createElement('div'); fb.className = 'fb';
+    const up = document.createElement('button'); up.textContent = '👍';
+    const down = document.createElement('button'); down.textContent = '👎 correggi';
+    up.onclick = () => { api().feedback(id, 1, ''); fb.remove(); };
+    down.onclick = () => {
+      const note = prompt('Cosa devo fare diversamente la prossima volta?');
+      if (note !== null) { api().feedback(id, -1, note); fb.remove(); }
+    };
+    fb.append(up, down); d.append(fb);
+  }
+
   function addMessage(role, text, id) {
     const d = document.createElement('div');
     d.className = 'msg ' + role;
     d.textContent = text;
-    if (role === 'agis' && id !== null) {
-      const fb = document.createElement('div'); fb.className = 'fb';
-      const up = document.createElement('button'); up.textContent = '👍';
-      const down = document.createElement('button'); down.textContent = '👎 correggi';
-      up.onclick = () => { api().feedback(id, 1, ''); fb.remove(); };
-      down.onclick = () => {
-        const note = prompt('Cosa devo fare diversamente la prossima volta?');
-        if (note !== null) { api().feedback(id, -1, note); fb.remove(); }
-      };
-      fb.append(up, down); d.append(fb);
-    }
+    if (role === 'agis' && id !== null) attachFeedback(d, id);
     log.append(d); log.scrollTop = log.scrollHeight;
+  }
+
+  // Risposta in arrivo: il testo compare mentre AGIS lo scrive.
+  let live = null;
+  function startAgis() {
+    live = document.createElement('div');
+    live.className = 'msg agis typing';
+    live.textContent = '…';
+    live.dataset.empty = '1';
+    log.append(live); log.scrollTop = log.scrollHeight;
+  }
+  function appendAgis(chunk) {
+    if (!live) startAgis();
+    if (live.dataset.empty) { live.textContent = ''; delete live.dataset.empty; }
+    live.textContent += chunk;
+    log.scrollTop = log.scrollHeight;
+  }
+  function finishAgis(text, id) {
+    if (!live) startAgis();
+    live.classList.remove('typing');
+    live.textContent = text;          // testo finale pulito
+    attachFeedback(live, id);
+    live = null;
+    log.scrollTop = log.scrollHeight;
   }
 
   document.getElementById('f').onsubmit = (e) => {

@@ -8,7 +8,8 @@ import traceback
 from pathlib import Path
 
 from . import config as config_mod
-from .brain import Brain, BrainError
+from .brain import BrainError
+from .live import LiveBrain
 from .memory import Memory
 from .sync import NotionSync
 
@@ -23,16 +24,36 @@ class Api:
         self._memory = Memory(cfg.data_dir / "agis.db",
                              cfg.workspace / "memoria" / "feedback.md")
         allow, deny = cfg.connectors.rules()
-        self._brain = Brain(cfg.brain, cfg.workspace, extra_allowed=allow, extra_denied=deny)
+        self._brain = LiveBrain(cfg.brain, cfg.workspace, extra_allowed=allow, extra_denied=deny)
         self._sync = NotionSync(cfg.notion, self._brain, self._memory,
                                 cfg.workspace / "memoria" / "notion.md")
         self._window = None
         self._busy = threading.Lock()
         self._recorder = self._stt = self._tts = None
+        self._speaker = None
+        # Accende subito il cervello: il primo messaggio non aspetta l'avvio di Claude Code.
+        threading.Thread(target=self._warmup, daemon=True).start()
         if cfg.voice.enabled:
             threading.Thread(target=self._load_voice, daemon=True).start()
         if cfg.notion.enabled:
             threading.Thread(target=self._sync_loop, daemon=True).start()
+
+    def _warmup(self) -> None:
+        try:
+            self._brain.warmup()
+        except BrainError as e:
+            self._status(f"⚠️ {e}")
+
+    def _reload_brain(self) -> None:
+        """Dopo una sincronizzazione riavvia il cervello (se libero) per fargli rileggere la memoria."""
+        if self._busy.acquire(blocking=False):
+            try:
+                self._brain.stop()
+                self._brain.warmup()
+            except BrainError as e:
+                self._status(f"⚠️ {e}")
+            finally:
+                self._busy.release()
 
     # --- cervello condiviso (Notion) ---------------------------------------
     def _sync_loop(self) -> None:
@@ -45,6 +66,7 @@ class Api:
         sent = self._sync.push_feedback()
         ok = self._sync.pull()
         if ok:
+            self._reload_brain()
             extra = f" · {sent} feedback inviati" if sent else ""
             self._status(f"Cervello aggiornato da Notion alle {time.strftime('%H:%M')}{extra}")
         else:
@@ -74,7 +96,10 @@ class Api:
         if not self._recorder:
             self._status("La voce non è ancora pronta")
             return
-        if self._tts:
+        if self._speaker:
+            self._speaker.cancel()
+            self._speaker = None
+        elif self._tts:
             self._tts.stop()
         if not self._recorder.recording:
             self._recorder.start()
@@ -104,16 +129,39 @@ class Api:
         try:
             self._memory.add_message("user", text, self._brain.session_id)
             self._status("Penso…")
+            self._js("startAgis()")
+            speaker = None
+            if voice and self._tts:
+                from .voice.speaker import StreamingSpeaker
+                speaker = self._speaker = StreamingSpeaker(self._tts)
+            buf: list[str] = []
+            last = [time.monotonic()]
+
+            def flush() -> None:
+                if buf:
+                    chunk = "".join(buf)
+                    buf.clear()
+                    self._js(f"appendAgis({json.dumps(chunk)})")
+                last[0] = time.monotonic()
+
+            def on_delta(t: str) -> None:
+                buf.append(t)
+                if speaker:
+                    speaker.feed(t)
+                if time.monotonic() - last[0] > 0.12:  # aggiorna la finestra ~8 volte al secondo
+                    flush()
+
             try:
-                reply = self._brain.ask(text, voice=voice)
+                reply = self._brain.ask(text, voice=voice, on_delta=on_delta)
                 answer = reply.text
             except BrainError as e:
                 answer = f"⚠️ {e}"
+            flush()
+            if speaker:
+                speaker.finish(fallback=answer)
             mid = self._memory.add_message("agis", answer, self._brain.session_id)
-            self._js(f"addMessage('agis', {json.dumps(answer)}, {mid})")
+            self._js(f"finishAgis({json.dumps(answer)}, {mid})")
             self._status("Pronto")
-            if voice and self._tts:
-                self._tts.speak(answer)
         finally:
             self._busy.release()
 
@@ -157,6 +205,7 @@ def main() -> None:
             print(f"[AGIS] Scorciatoia globale non attiva: {e}")
 
     webview.start()
+    api._brain.stop()  # finestra chiusa: spegne anche Claude Code
 
 
 if __name__ == "__main__":

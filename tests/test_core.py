@@ -195,3 +195,82 @@ def test_brain_passes_connector_rules(tmp_path):
     allow_at, deny_at = cmd.index("--allowedTools"), cmd.index("--disallowedTools")
     assert "mcp__claude_ai_Gmail__*" in cmd[allow_at:deny_at]
     assert "mcp__*send*" in cmd[deny_at:]
+
+
+class FakeProc:
+    """Finto processo Claude Code in modalità stream-json."""
+    def __init__(self, replies):
+        import io, queue as q
+        self.replies = list(replies)
+        self.sent = []
+        self._out = q.Queue()
+        self.stderr = io.StringIO("")
+        outer = self
+
+        class In:
+            def write(self, s):
+                outer.sent.append(json.loads(s))
+                text = outer.replies.pop(0)
+                for part in (text[: len(text) // 2], text[len(text) // 2:]):
+                    outer._out.put(json.dumps({"type": "stream_event", "event": {
+                        "type": "content_block_delta", "delta": {"type": "text_delta", "text": part}}}) + "\n")
+                outer._out.put(json.dumps({"type": "result", "result": text, "session_id": "S1"}) + "\n")
+            def flush(self): pass
+            def close(self): outer._out.put(None)
+        self.stdin = In()
+        self.returncode = None
+
+    @property
+    def stdout(self):
+        while True:
+            line = self._out.get()
+            if line is None:
+                self.returncode = 0
+                return
+            yield line
+
+    def poll(self): return self.returncode
+    def wait(self, timeout=None): self.returncode = 0; return 0
+    def kill(self): self.returncode = -9
+
+
+def test_live_brain_streams_and_keeps_one_process(tmp_path):
+    from agis.live import LiveBrain, VOICE_TAG
+    procs = []
+
+    def popen(cmd, **kw):
+        assert "stream-json" in cmd and "--include-partial-messages" in cmd
+        procs.append(FakeProc(["Ciao Loffre.", "Seconda risposta."]))
+        return procs[-1]
+
+    b = LiveBrain(BrainConfig(timeout_s=5), tmp_path, popen=popen)
+    b.warmup()
+    deltas = []
+    r1 = b.ask("ciao", on_delta=deltas.append)
+    r2 = b.ask("e poi?", voice=True)
+    assert r1.text == "Ciao Loffre." and "".join(deltas) == "Ciao Loffre."
+    assert r2.text == "Seconda risposta." and b.session_id == "S1"
+    assert len(procs) == 1                                   # un solo processo per tutta la chat
+    assert procs[0].sent[1]["message"]["content"].startswith(VOICE_TAG)
+    b.new_session()
+    assert b.session_id is None and procs[0].returncode == 0
+
+
+def test_streaming_speaker_speaks_sentence_by_sentence():
+    import time as t
+    from agis.voice.speaker import StreamingSpeaker
+    spoken = []
+
+    class TTS:
+        def speak(self, s): spoken.append(s)
+        def stop(self): pass
+
+    sp = StreamingSpeaker(TTS())
+    sp.feed("Oggi hai tre ")
+    sp.feed("mail. La prima è di V Me")
+    t.sleep(0.05)
+    assert spoken == ["Oggi hai tre mail."]          # parla prima che la risposta sia finita
+    sp.feed("dia! Vuoi i dettagli")
+    sp.finish()
+    t.sleep(0.05)
+    assert spoken == ["Oggi hai tre mail.", "La prima è di V Media!", "Vuoi i dettagli"]
