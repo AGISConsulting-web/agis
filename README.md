@@ -25,7 +25,9 @@ La cartella `workspace/` è il "cervello" vero e proprio: `CLAUDE.md` (personali
 ## Installazione su Windows
 
 Serve: **Python 3.11 o più recente** (python.org, spunta "Add python.exe to PATH") e
-**Claude Code** già installato con login fatto (`claude` in un terminale deve aprirsi).
+**Claude Code** a riga di comando (non basta l'app desktop di Claude). Se in PowerShell
+`claude --version` non funziona, installalo con `irm https://claude.ai/install.ps1 | iex`,
+riapri PowerShell e fai il login con il tuo account Pro.
 
 Apri PowerShell nella cartella dove vuoi il progetto:
 
@@ -66,7 +68,7 @@ python -m agis
 
 - AGIS legge, cerca e prepara bozze. **Non invia, non pubblica, non cancella e non paga**
   senza che tu glielo confermi in chat (regola in `workspace/CLAUDE.md`).
-- Il terminale (`Bash`) è disattivato per il cervello.
+- Il terminale (`Bash` e `PowerShell`) è disattivato per il cervello.
 - `config.toml`, i dati e la memoria personale non vanno mai su GitHub (`.gitignore`).
 
 ## Uso in azienda

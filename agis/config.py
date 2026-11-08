@@ -20,7 +20,7 @@ class BrainConfig:
     allowed_tools: list[str] = field(default_factory=lambda: [
         "WebSearch", "WebFetch", "Read", "Glob", "Grep", "Write", "Edit",
     ])
-    disallowed_tools: list[str] = field(default_factory=lambda: ["Bash"])
+    disallowed_tools: list[str] = field(default_factory=lambda: ["Bash", "PowerShell"])
 
 
 @dataclass
