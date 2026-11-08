@@ -38,6 +38,10 @@ riscarica memoria, feedback e brief di oggi in `workspace/memoria/notion.md`. Le
 restano veloci e AGIS sa sempre cosa c'era nel brief. Se Notion non risponde, usa l'ultima
 copia buona. Per correggere AGIS ovunque basta una riga in Feedback AGIS.
 
+Ogni **domenica alle 18:31** AGIS rilegge feedback e lavoro della settimana e propone in
+**Revisioni AGIS** come cambiare le proprie istruzioni (prima → dopo). Metti Stato =
+"Approvata" (o scrivi in Note quali approvi) e la sera alle 20:35 le applica da solo.
+
 ## Installazione su Windows
 
 Serve: **Python 3.11 o più recente** (python.org, spunta "Add python.exe to PATH") e
@@ -96,10 +100,10 @@ in `config.toml` metti `auth = "api_key"` e la chiave API Anthropic **del client
 
 - [x] v0.1 — chat + voce locale, memoria e feedback, Notion, skill che creano skill
 - [x] v0.2 — cervello condiviso su Notion con brief e task automatici
+- [x] Auto-miglioramento: revisione ogni domenica (Revisioni AGIS) applicata dopo il tuo ok
 - [ ] Google (Gmail, Calendar, Drive) come server MCP locale
 - [ ] Icona nell'area di notifica e avvio automatico con Windows
 - [ ] Brief del mattino letto ad alta voce alle 6:00
-- [ ] Revisione settimanale automatica: AGIS rilegge i feedback e riscrive le proprie istruzioni
 - [ ] Parola di attivazione ("Ehi AGIS") senza tasti
 - [ ] Installer `.exe`
 

@@ -25,7 +25,9 @@ caricati su Notion):
   Brief giornalieri collection://1d368942-cbad-4c2d-90a8-4e50eb016388 ·
   Progetti collection://eaf08dbe-d1dd-4b98-a971-ddcc1267c412 ·
   Bozze social collection://f0a91643-d6b8-4044-a9dd-7eca66002ead ·
-  Radar prospect collection://b1cf0d91-33a3-43c0-83a9-651682550660
+  Radar prospect collection://b1cf0d91-33a3-43c0-83a9-651682550660 ·
+  Revisioni AGIS collection://af043708-1658-4211-9206-fb2ccc13d198 (proposte settimanali di
+  modifica alle tue istruzioni: se Loffre ti chiede di approvarne una, metti Stato = "Approvata")
 
 ## Imparare dalle correzioni
 - Quando Loffre ti corregge o ti dà una regola in chat ("d'ora in poi…", "non fare più…",
