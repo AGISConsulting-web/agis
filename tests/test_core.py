@@ -396,3 +396,23 @@ def test_google_tool_errors_are_readable():
     def boom():
         raise RuntimeError("Account x non collegato: esegui python scripts\\collega_google.py x")
     assert boom().startswith("ERRORE: Account x non collegato")
+
+
+def test_sync_prompts_use_drive_folders():
+    from datetime import date
+    from agis.config import NotionConfig
+    from agis.sync import pull_prompt, push_prompt
+    cfg = NotionConfig()
+    pull = pull_prompt(cfg, date(2026, 11, 11))
+    assert cfg.feedback_active in pull and cfg.brief_folder in pull and "Brief · 2026-11-11" in pull
+    assert "Notion" not in pull
+    push = push_prompt(cfg, [(1, "2026-11-11T09:00:00", -1, "più breve", "risposta")])
+    assert cfg.feedback_active in push and "2026-11-11 · App AGIS · 👎 più breve" in push
+
+
+def test_config_accepts_cervello_section_and_ignores_old_keys(tmp_path):
+    from agis.config import load
+    p = tmp_path / "config.toml"
+    p.write_text('[notion]\nmemoria_page = "vecchio"\n[cervello]\npull_every_min = 60\n', encoding="utf-8")
+    cfg = load(p)
+    assert cfg.notion.pull_every_min == 60 and cfg.notion.root_folder.startswith("17_")

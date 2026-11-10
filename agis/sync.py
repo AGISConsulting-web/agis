@@ -1,13 +1,13 @@
-"""Sincronizzazione con il cervello condiviso su Notion.
+"""Sincronizzazione con il cervello condiviso (archivio AGIS su Google Drive).
 
 - pull(): scarica Memoria AGIS, feedback attivi e brief di oggi in
   workspace/memoria/notion.md, che CLAUDE.md importa. Così ogni risposta
-  dell'app sa le stesse cose dei task automatici, senza interrogare Notion
+  dell'app sa le stesse cose dei task automatici, senza interrogare Drive
   a ogni messaggio (più veloce e consuma meno).
 - push_feedback(): carica nel database Feedback AGIS i 👍/👎 dati nell'app.
 
-Il lavoro lo fa Claude Code stesso tramite il server MCP di Notion, quindi non
-serve nessun token Notion nell'app.
+Il lavoro lo fa Claude Code stesso tramite il connettore Google Drive di claude.ai,
+quindi non serve nessuna chiave nell'app.
 """
 from __future__ import annotations
 
@@ -21,29 +21,43 @@ from .memory import Memory
 
 SYSTEM_SYNC = (
     "Sei il modulo di sincronizzazione di AGIS. Esegui solo il compito richiesto usando "
-    "gli strumenti Notion. Non fare domande e non aggiungere commenti."
+    "gli strumenti di Google Drive. Non fare domande e non aggiungere commenti."
 )
 
 MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio",
         "agosto", "settembre", "ottobre", "novembre", "dicembre"]
 
 
+DRIVE_HOWTO = (
+    "L'archivio di AGIS è su Google Drive: ogni elemento è un Google Doc e la cartella in cui "
+    "si trova è il suo stato. Elenca una cartella con lo strumento di ricerca di Drive "
+    "(query \"parentId = '<id>'\"), leggi i documenti con lo strumento di lettura e crea "
+    "documenti con create_file (contentMimeType \"text/markdown\", textContent, parentId)."
+)
+
+
 def pull_prompt(cfg: NotionConfig, today: date) -> str:
     return f"""Oggi è il {today.day} {MESI[today.month - 1]} {today.year} ({today.isoformat()}).
-Leggi da Notion e restituisci UN SOLO documento Markdown, senza altro testo prima o dopo, con queste sezioni:
+{DRIVE_HOWTO}
+Leggi da Google Drive e restituisci UN SOLO documento Markdown, senza altro testo prima o dopo, con queste sezioni:
 
 # Memoria AGIS
-Il contenuto della pagina {cfg.memoria_page}, riportato fedelmente (puoi togliere solo righe vuote).
+Il contenuto del Google Doc "🧠 Memoria AGIS" nella cartella {cfg.root_folder}, riportato fedelmente.
 
 # Feedback attivi
-Dal database {cfg.feedback_ds}: tutte le righe con Stato "Attivo" o "Integrato nelle istruzioni",
-dalla più recente. Una riga ciascuna: "- AAAA-MM-GG [Ambito] Voto — Feedback". Massimo 40 righe.
+I documenti nella cartella {cfg.feedback_active} (attivi) e poi in {cfg.feedback_integrated}
+(già integrati), dal più recente. Una riga ciascuno: il titolo del documento (contiene data,
+ambito, voto e testo); leggi il contenuto solo se il titolo non basta. Massimo 40 righe.
 
 # Brief di oggi
-Dal database {cfg.brief_ds}: la pagina con Data di oggi. Se non c'è, la più recente,
-scrivendo "(brief del GG/MM, quello di oggi non è ancora uscito)". Riporta titolo, Priorità
-e il contenuto della pagina, riassumendo solo se supera circa 80 righe (agenda, meteo e
-priorità vanno sempre riportati completi). Se il database è vuoto scrivi "Nessun brief ancora".
+Nella cartella {cfg.brief_folder}: il documento "Brief · {today.isoformat()} …". Se non c'è, il più
+recente, scrivendo "(brief del GG/MM, quello di oggi non è ancora uscito)". Riporta agenda,
+meteo, mail e richieste, priorità complete; delle notizie solo i titoli. Se la cartella è vuota
+scrivi "Nessun brief ancora".
+
+# Richieste di lavoro aperte
+I titoli dei documenti nelle cartelle {cfg.requests_new} (nuove) e {cfg.requests_ready}
+(pacchetto pronto), uno per riga. Se non ce ne sono scrivi "Nessuna".
 
 Se una delle fonti non è raggiungibile, scrivi sotto la sua sezione "NON DISPONIBILE" e continua."""
 
@@ -54,17 +68,18 @@ def push_prompt(cfg: NotionConfig, rows: list[tuple]) -> str:
         voto = "👍 Utile" if rating > 0 else "👎 Da correggere"
         testo = (note or "").strip() or ("Risposta utile" if rating > 0 else "Risposta da correggere")
         ref = (msg or "").replace("\n", " ").strip()[:300]
-        righe.append(f'- Feedback: "{testo}" | Voto: {voto} | Data: {ts[:10]} | '
-                     f'Risposta di riferimento: "{ref}"')
+        righe.append(f'- Titolo: "{ts[:10]} · App AGIS · {voto.split()[0]} {testo[:120]}" | '
+                     f'Feedback: "{testo}" | Voto: {voto} | Risposta di riferimento: "{ref}"')
     elenco = "\n".join(righe)
-    return f"""Crea {len(rows)} righe nel database Notion {cfg.feedback_ds}, una per ciascun elemento qui sotto.
-Per tutte: Ambito = "App AGIS", Fonte = "App AGIS", Stato = "Attivo".
-Usa esattamente i testi indicati per Feedback, Voto, Data e Risposta di riferimento.
+    return f"""{DRIVE_HOWTO}
+Crea {len(rows)} Google Doc nella cartella Drive {cfg.feedback_active} (Feedback attivi), uno per
+ciascun elemento qui sotto. Titolo del documento = il Titolo indicato. Contenuto = le righe
+"Feedback: …", "Voto: …", "Ambito: App AGIS · Fonte: App AGIS", "Risposta di riferimento: …".
 
 {elenco}
 
 Quando hai finito rispondi esattamente con: OK {len(rows)}
-Se non riesci a creare tutte le righe rispondi con: ERRORE e il motivo."""
+Se non riesci a creare tutti i documenti rispondi con: ERRORE e il motivo."""
 
 
 class NotionSync:
@@ -84,18 +99,18 @@ class NotionSync:
             try:
                 reply = self.brain.oneshot(pull_prompt(self.cfg, today), SYSTEM_SYNC)
             except BrainError as e:
-                print(f"[AGIS] Sync Notion non riuscita: {e}")
+                print(f"[AGIS] Sync cervello (Drive) non riuscita: {e}")
                 return False
             text = reply.text.strip()
             if reply.is_error or "# Memoria AGIS" not in text:
-                print(f"[AGIS] Sync Notion: risposta inattesa: {text[:300]}")
+                print(f"[AGIS] Sync cervello: risposta inattesa: {text[:300]}")
                 return False
             if text.count("NON DISPONIBILE") >= 3:
-                # Notion non raggiungibile: tieni l'ultima copia buona invece di cancellarla.
-                print("[AGIS] Sync Notion: Notion non raggiungibile, tengo la copia precedente")
+                # Drive non raggiungibile: tieni l'ultima copia buona invece di cancellarla.
+                print("[AGIS] Sync cervello: Drive non raggiungibile, tengo la copia precedente")
                 return False
             stamp = datetime.now().strftime("%d/%m/%Y %H:%M")
-            header = (f"<!-- Copia locale del cervello condiviso su Notion, aggiornata il {stamp}. "
+            header = (f"<!-- Copia locale del cervello condiviso (Google Drive), aggiornata il {stamp}. "
                       "Non modificare: viene riscritta a ogni sincronizzazione. -->\n\n")
             self.cache.parent.mkdir(parents=True, exist_ok=True)
             self.cache.write_text(header + text[text.index("# Memoria AGIS"):] + "\n",
@@ -114,7 +129,7 @@ class NotionSync:
             try:
                 reply = self.brain.oneshot(push_prompt(self.cfg, rows), SYSTEM_SYNC)
             except BrainError as e:
-                print(f"[AGIS] Invio feedback a Notion non riuscito: {e}")
+                print(f"[AGIS] Invio feedback a Drive non riuscito: {e}")
                 return 0
             if reply.is_error or f"OK {len(rows)}" not in reply.text:
                 print(f"[AGIS] Invio feedback: risposta inattesa: {reply.text[:300]}")

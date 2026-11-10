@@ -58,7 +58,7 @@ class Api:
             finally:
                 self._busy.release()
 
-    # --- cervello condiviso (Notion) ---------------------------------------
+    # --- cervello condiviso (Google Drive) ---------------------------------------
     def _sync_loop(self) -> None:
         """All'avvio e poi ogni pull_every_min: invia feedback in sospeso e scarica memoria/brief."""
         while True:
@@ -71,13 +71,13 @@ class Api:
         if ok:
             self._reload_brain()
             extra = f" · {sent} feedback inviati" if sent else ""
-            self._status(f"Cervello aggiornato da Notion alle {time.strftime('%H:%M')}{extra}")
+            self._status(f"Cervello aggiornato da Drive alle {time.strftime('%H:%M')}{extra}")
         else:
-            self._status("Notion non raggiungibile: uso la memoria locale")
+            self._status("Drive non raggiungibile: uso la memoria locale")
 
     def sync_notion(self) -> None:
         """Pulsante "Aggiorna" della finestra."""
-        self._status("Aggiorno il cervello da Notion…")
+        self._status("Aggiorno il cervello da Drive…")
         threading.Thread(target=self._sync_now, daemon=True).start()
 
     # --- voce ---------------------------------------------------------------
@@ -174,7 +174,7 @@ class Api:
         if self._cfg.notion.enabled:
             def push():
                 if self._sync.push_feedback():
-                    self._status("Feedback salvato anche su Notion")
+                    self._status("Feedback salvato anche su Drive")
             threading.Thread(target=push, daemon=True).start()
 
     def new_session(self) -> None:

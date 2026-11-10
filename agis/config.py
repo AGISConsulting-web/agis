@@ -71,16 +71,6 @@ class GoogleConfig:
 
 
 @dataclass
-class NotionConfig:
-    """Il cervello condiviso: le stesse pagine che leggono i task automatici."""
-    enabled: bool = True
-    memoria_page: str = "https://app.notion.com/p/41246a25c90a81348e29ea2a09be3681"
-    feedback_ds: str = "collection://5f202c26-9a32-47a3-8e0c-b3e171a40bf6"
-    brief_ds: str = "collection://1d368942-cbad-4c2d-90a8-4e50eb016388"
-    pull_every_min: int = 120
-
-
-@dataclass
 class VoiceConfig:
     enabled: bool = True
     hotkey: str = "ctrl+alt+j"
@@ -88,6 +78,24 @@ class VoiceConfig:
     language: str = "it"
     piper_model: str = "voices/it_IT-paola-medium.onnx"
     sample_rate: int = 16000
+
+
+@dataclass
+class NotionConfig:
+    """Il cervello condiviso, ora su Google Drive (cartella AGIS).
+
+    Si chiama ancora NotionConfig per compatibilità: dal 10/11/2026 memoria, feedback e
+    brief stanno su Drive (Notion aveva finito lo spazio gratuito). Ogni elemento è un
+    Google Doc e la cartella in cui si trova è il suo stato.
+    """
+    enabled: bool = True
+    root_folder: str = "17_0WqKTm6hwwUbs0u_yGq-vwvqlEDPze"
+    feedback_active: str = "1Q3P8q9Ppdia-ZVU8PPwVjxYp_ewnSae_"
+    feedback_integrated: str = "1vcipfomk_H93xlLY7C2nt9GP77xoAfVv"
+    brief_folder: str = "13PVQKRQUngTGqjWWtueKe1RHap_Hcxpa"
+    requests_new: str = "1Ln5q6zf0GRi6NAMznH_ySEhEd3VyLUC1"
+    requests_ready: str = "146fg9I3AYPO-cSC0IH5g5bEMDJaDRC8D"
+    pull_every_min: int = 120
 
 
 @dataclass
@@ -108,7 +116,9 @@ def load(path: Path | None = None) -> Config:
         raw = tomllib.loads(path.read_text(encoding="utf-8-sig"))  # regge anche i file salvati con BOM
     brain = BrainConfig(**raw.get("brain", {}))
     voice = VoiceConfig(**raw.get("voice", {}))
-    notion = NotionConfig(**raw.get("notion", {}))
+    known = set(NotionConfig.__dataclass_fields__)
+    shared = {**raw.get("notion", {}), **raw.get("cervello", {})}
+    notion = NotionConfig(**{k: v for k, v in shared.items() if k in known})
     connectors = ConnectorsConfig(**raw.get("connectors", {}))
     google = GoogleConfig(**raw.get("google", {}))
     if not Path(google.client_secret).is_absolute():

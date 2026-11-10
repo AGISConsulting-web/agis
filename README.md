@@ -71,25 +71,28 @@ Se compare "accesso bloccato dall'amministratore", quell'organizzazione blocca l
 esterne: l'amministratore può autorizzare l'ID client di AGIS dalla Console di amministrazione
 (Sicurezza → Controlli API), altrimenti per quella casella resta l'inoltro.
 
-## Il cervello condiviso
+## Il cervello condiviso (Google Drive)
 
-App e task automatici (brief delle 6:00, bozze social del lunedì, radar prospect del
-giovedì) usano le stesse tre fonti su Notion, sotto la pagina **Jarvis**:
+App e task automatici usano lo stesso archivio: la cartella **AGIS** su Google Drive
+(Notion aveva finito lo spazio gratuito). Ogni elemento è un Google Doc e **la cartella in
+cui si trova è il suo stato**: dal telefono basta spostare un documento per dire qualcosa ad
+AGIS. La guida completa è il documento "📖 Come funziona AGIS" nella cartella.
 
-| Fonte | Cosa contiene | Chi scrive |
+| Cartella | Contenuto | Chi scrive |
 |---|---|---|
-| **Memoria AGIS** | chi sei, clienti, account, preferenze, regole fisse | tu (e AGIS dopo il tuo ok) |
-| **Feedback AGIS** | correzioni e regole, con Ambito (Brief, Bozze social…) e Stato | tu, i 👍/👎 dell'app, AGIS quando lo correggi in chat |
-| **Brief giornalieri** | un brief per giorno | il task delle 6:00 |
+| 🧠 Memoria AGIS | chi sei, clienti, account, preferenze, regole | tu |
+| Feedback (Attivi / Integrati) | correzioni e regole | tu, i 👍/👎 dell'app, AGIS quando lo correggi |
+| Brief | un brief completo per giorno | task delle 5:48 |
+| Richieste di lavoro (Nuove → Fatte) | richieste da Gmail e Slack, pacchetti per i siti | Sentinella, ogni 2 ore |
+| Bozze social · Radar prospect · Revisioni · Prototipi siti | lavoro settimanale di AGIS | task automatici |
 
-L'app all'avvio, ogni 2 ore e quando premi **⟳** carica su Notion i 👍/👎 in sospeso e
-riscarica memoria, feedback e brief di oggi in `workspace/memoria/notion.md`. Le risposte
-restano veloci e AGIS sa sempre cosa c'era nel brief. Se Notion non risponde, usa l'ultima
-copia buona. Per correggere AGIS ovunque basta una riga in Feedback AGIS.
+L'app all'avvio, ogni 2 ore e con **⟳** carica su Drive i 👍/👎 in sospeso e riscarica
+memoria, feedback, brief di oggi e richieste aperte in `workspace/memoria/notion.md`. Se
+Drive non risponde usa l'ultima copia buona.
 
 Ogni **domenica alle 18:31** AGIS rilegge feedback e lavoro della settimana e propone in
-**Revisioni AGIS** come cambiare le proprie istruzioni (prima → dopo). Metti Stato =
-"Approvata" (o scrivi in Note quali approvi) e la sera alle 20:35 le applica da solo.
+**Revisioni › 1 · Da approvare** come cambiare le proprie istruzioni (prima → dopo). Sposta il
+documento in "2 · Approvate" (o commenta "solo 1 e 3") e la sera alle 20:35 le applica da solo.
 
 ## Installazione su Windows
 
@@ -153,6 +156,7 @@ in `config.toml` metti `auth = "api_key"` e la chiave API Anthropic **del client
 - [x] Gmail, Calendar e Drive tramite i connettori claude.ai
 - [x] v0.4 — cervello sempre acceso, risposte in streaming, voce frase per frase
 - [x] v0.5 — caselle V Media e ITS collegate direttamente (bozze col mittente giusto)
+- [x] v0.6 — Sentinella (mail + Slack ogni 2 ore) e archivio spostato da Notion a Google Drive
 - [ ] Icona nell'area di notifica e avvio automatico con Windows
 - [ ] Brief del mattino letto ad alta voce alle 6:00
 - [ ] Parola di attivazione ("Ehi AGIS") senza tasti
