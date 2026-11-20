@@ -416,3 +416,26 @@ def test_config_accepts_cervello_section_and_ignores_old_keys(tmp_path):
     p.write_text('[notion]\nmemoria_page = "vecchio"\n[cervello]\npull_every_min = 60\n', encoding="utf-8")
     cfg = load(p)
     assert cfg.notion.pull_every_min == 60 and cfg.notion.root_folder.startswith("17_")
+
+
+def test_single_instance_lock():
+    from agis import app
+    import socket
+    s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+    assert app.already_running(port) is False      # primo avvio: prende il posto
+    assert app.already_running(port) is True       # secondo avvio: AGIS è già aperto
+    app._INSTANCE_LOCK.close()
+
+
+def test_launcher_update_installs_only_when_requirements_change(tmp_path, monkeypatch):
+    from agis import launcher
+    calls = []
+    monkeypatch.setattr(launcher, "DATA", tmp_path)
+    monkeypatch.setattr(launcher, "LOG", tmp_path / "agis.log")
+    monkeypatch.setattr(launcher, "run", lambda cmd, timeout: calls.append(cmd) or
+                        subprocess.CompletedProcess(cmd, 0, "", ""))
+    launcher.update()                     # primo avvio: installa
+    assert any("pip" in c for c in calls)
+    calls.clear()
+    launcher.update()                     # niente di cambiato: solo git pull
+    assert calls and all("pip" not in c for c in calls) and calls[0][:2] == ["git", "pull"]

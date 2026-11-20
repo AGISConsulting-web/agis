@@ -122,7 +122,18 @@ claude
 
 Dentro Claude Code scrivi `/mcp`, scegli **notion**, autentica nel browser, poi esci con `/exit`.
 
-### Avviare AGIS
+### Icona sul desktop (una volta sola)
+
+```powershell
+python scripts\crea_collegamento.py
+```
+
+Crea l'icona **AGIS** sul desktop e nel menu Start. Da lì AGIS si apre con un doppio clic,
+senza PowerShell né finestre nere, e a ogni avvio si aggiorna da solo da GitHub (e installa
+le librerie nuove se servono). Aggiungi `--avvio-automatico` per farlo partire all'accensione
+del PC, `--rimuovi` per togliere le icone. Se AGIS non parte, i dettagli sono in `data\agis.log`.
+
+### Avviare AGIS dal terminale (alternativa)
 
 ```powershell
 cd ..
@@ -157,7 +168,7 @@ in `config.toml` metti `auth = "api_key"` e la chiave API Anthropic **del client
 - [x] v0.4 — cervello sempre acceso, risposte in streaming, voce frase per frase
 - [x] v0.5 — caselle V Media e ITS collegate direttamente (bozze col mittente giusto)
 - [x] v0.6 — Sentinella (mail + Slack ogni 2 ore) e archivio spostato da Notion a Google Drive
-- [ ] Icona nell'area di notifica e avvio automatico con Windows
+- [x] Icona sul desktop, avvio con un clic, aggiornamento automatico
 - [ ] Brief del mattino letto ad alta voce alle 6:00
 - [ ] Parola di attivazione ("Ehi AGIS") senza tasti
 - [ ] Installer `.exe`

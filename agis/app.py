@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import threading
 import time
 import traceback
@@ -190,8 +191,34 @@ class Api:
         self._js(f"setStatus({json.dumps(text)})")
 
 
+_INSTANCE_LOCK = None  # resta aperto finché AGIS è acceso
+
+
+def already_running(port: int = 47615) -> bool:
+    """Un solo AGIS alla volta: se la porta locale è occupata, AGIS è già aperto."""
+    import socket
+    global _INSTANCE_LOCK
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind(("127.0.0.1", port))
+    except OSError:
+        s.close()
+        return True
+    _INSTANCE_LOCK = s
+    return False
+
+
 def main() -> None:
     import webview
+
+    if already_running():
+        if sys.platform == "win32":
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(
+                None, "AGIS è già aperto: lo trovi nella barra delle applicazioni.", "AGIS", 0x40)
+        else:
+            print("AGIS è già aperto.")
+        return
 
     cfg = config_mod.load()
     api = Api(cfg)
@@ -207,7 +234,11 @@ def main() -> None:
         except Exception as e:  # noqa: BLE001
             print(f"[AGIS] Scorciatoia globale non attiva: {e}")
 
-    webview.start()
+    icon = Path(__file__).resolve().parent.parent / "assets" / "agis.ico"
+    try:
+        webview.start(icon=str(icon) if icon.exists() else None)
+    except TypeError:  # versioni di pywebview senza il parametro icon
+        webview.start()
     api._brain.stop()  # finestra chiusa: spegne anche Claude Code
 
 
