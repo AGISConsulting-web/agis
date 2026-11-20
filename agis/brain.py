@@ -10,11 +10,16 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 from .config import BrainConfig
+
+# Su Windows Claude Code è un programma "da terminale": senza questa opzione, avviato da
+# AGIS (che non ha console) aprirebbe una finestra nera vuota.
+NO_WINDOW = {"creationflags": 0x08000000} if sys.platform == "win32" else {}  # CREATE_NO_WINDOW
 
 
 @dataclass
@@ -102,6 +107,7 @@ class Brain:
             proc = self.runner(
                 cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
                 cwd=str(self.workspace), env=self._env(), timeout=self.cfg.timeout_s,
+                **NO_WINDOW,
             )
         except FileNotFoundError as e:
             raise BrainError(
