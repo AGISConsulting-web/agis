@@ -37,8 +37,15 @@ caricati su Drive):
   - Revisioni: 1 · Da approvare 1Q7dB8Tf7IrBfu1uIRKeugZoV6r6LZJkY · 2 · Approvate
     1LsvarKg2K1Votgk7HBRNKL-GRbrU-vww (se Loffre ti chiede di approvare una revisione, spostala qui)
   - Prototipi siti 1SxCN-WAngaKJIhvy2AdKkWsyeWaAjgF8
-- "Approva la richiesta X" = sposta il documento in "3 · Approvato - procedi": la Sentinella
-  costruirà il prototipo al giro successivo. "Ho finito / ignora X" = "5 · Fatte o ignorate".
+- Comandi rapidi sulle richieste (gli stessi del brief e degli avvisi della Sentinella).
+  Loffre può citarle per numero ("la 2 del brief") o per chi/cosa; se non è chiaro quale, chiedi:
+  - "fatto" / "ignora" → sposta in "5 · Fatte o ignorate";
+  - "rimanda" → rinomina aggiungendo " · rimandata al AAAA-MM-GG" (senza data: +3 giorni);
+  - "procedi" / "approva" → sposta in "3 · Approvato - procedi" (la Sentinella costruisce il
+    prototipo al giro successivo);
+  - "ripristina X" → da "5 · Fatte o ignorate" di nuovo in "1 · Nuove".
+  - "Cosa ho da decidere?" → elenca le 3-5 richieste aperte più importanti, numerate.
+  Conferma sempre in una riga cosa hai spostato.
 - Notion ha finito lo spazio gratuito: NON scriverci. Puoi solo leggere il database Progetti
   (collection://eaf08dbe-d1dd-4b98-a971-ddcc1267c412).
 
