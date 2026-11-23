@@ -253,14 +253,19 @@ def mcp_config_args(cfg) -> tuple[list[str], list[str]]:
     import sys
     from .config import ROOT
 
-    if not cfg.google.accounts:
-        return [], []
+    from .files_mcp import SERVER_NAME as FILES_SERVER
+
+    env = {"PYTHONPATH": str(ROOT), "PYTHONIOENCODING": "utf-8"}
+    servers = {FILES_SERVER: {"type": "stdio", "command": sys.executable,
+                              "args": ["-m", "agis.files_mcp"], "env": env}}
+    allow = [f"mcp__{FILES_SERVER}__*"]
+    if cfg.google.accounts:
+        servers[SERVER_NAME] = {"type": "stdio", "command": sys.executable,
+                                "args": ["-m", "agis.google_mcp"], "env": env}
+        allow.append(f"mcp__{SERVER_NAME}__*")
     path = cfg.data_dir / "mcp_google.json"
-    path.write_text(json.dumps({"mcpServers": {SERVER_NAME: {
-        "type": "stdio", "command": sys.executable, "args": ["-m", "agis.google_mcp"],
-        "env": {"PYTHONPATH": str(ROOT), "PYTHONIOENCODING": "utf-8"},
-    }}}, indent=2), encoding="utf-8")
-    return ["--mcp-config", str(path)], [f"mcp__{SERVER_NAME}__*"]
+    path.write_text(json.dumps({"mcpServers": servers}, indent=2), encoding="utf-8")
+    return ["--mcp-config", str(path)], allow
 
 
 # --- server MCP -----------------------------------------------------------------

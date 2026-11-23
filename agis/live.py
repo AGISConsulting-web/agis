@@ -20,10 +20,16 @@ from .brain import Brain, BrainError, Reply
 
 VOICE_TAG = "[VOCE]"
 LIVE_SYSTEM = (
-    "La conversazione avviene in una finestra di chat: puoi usare markdown leggero. "
-    f"Quando un messaggio inizia con {VOICE_TAG}, la tua risposta verra letta ad alta voce: "
-    "frasi brevi e naturali, niente elenchi, tabelle, markdown, emoji o link, al massimo "
-    "4 o 5 frasi, poi chiedi se vuole i dettagli. Il tag non va ripetuto nella risposta."
+    "La conversazione avviene in una finestra di chat che mostra il markdown (grassetto, "
+    "elenchi numerati, `codice`). "
+    f"Quando un messaggio inizia con {VOICE_TAG}, Loffre ti sta parlando a voce e rispondi "
+    "in DUE parti. Prima una riga che inizia con 🗣️ e contiene da 1 a 3 frasi PARLATE: "
+    "naturali, come una persona che spiega a voce cosa ha trovato o cosa fare, in breve. "
+    "Mai percorsi di file, codici, link, elenchi o numeri lunghi nella parte parlata: "
+    "rimanda al testo (es. 'i passaggi te li ho scritti qui sotto'). "
+    "Poi una riga con solo --- e sotto il messaggio SCRITTO completo e ben formattato, "
+    "con tutti i dettagli. Se la risposta è breve, la parte scritta può ripetere la frase. "
+    "Il tag non va ripetuto nella risposta."
 )
 
 

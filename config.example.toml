@@ -22,6 +22,9 @@ whisper_model = "small"   # tiny/base = più veloce, medium = più preciso
 language = "it"
 piper_model = "voices/it_IT-paola-medium.onnx"
 sample_rate = 16000
+tts = "edge"                       # edge = voce naturale online (ripiego automatico su Piper) · piper · windows
+edge_voice = "it-IT-IsabellaNeural" # oppure it-IT-ElsaNeural, it-IT-DiegoNeural
+edge_rate = "+8%"                  # velocità: "+0%" normale, "+15%" più veloce
 
 [cervello]
 # Il cervello condiviso su Google Drive (cartella AGIS): memoria, feedback, brief, richieste.
@@ -41,3 +44,7 @@ allow_calendar_edit = false   # true = AGIS può creare e modificare eventi (di 
 # Ogni account va collegato una volta: python scripts\collega_google.py <email>
 accounts = ["a.loffredo@v-media.it", "andrea.loffredo@itsrizzoli.it"]
 client_secret = "data/google/client_secret.json"
+
+[files]
+# Cartelle del PC che AGIS può riordinare (mai cancellare). Vuoto = Download, Desktop, Documenti.
+roots = []

@@ -262,7 +262,8 @@ def test_streaming_speaker_speaks_sentence_by_sentence():
     spoken = []
 
     class TTS:
-        def speak(self, s): spoken.append(s)
+        def synth(self, s): return s
+        def play(self, s): spoken.append(s)
         def stop(self): pass
 
     sp = StreamingSpeaker(TTS())
@@ -381,11 +382,12 @@ def test_google_mcp_config_args(tmp_path):
     from agis.config import Config, GoogleConfig, VoiceConfig
     from agis.google_mcp import mcp_config_args
     cfg = Config(brain=BrainConfig(), voice=VoiceConfig(), workspace=tmp_path, data_dir=tmp_path)
-    assert mcp_config_args(cfg) == ([], [])
+    args, allow = mcp_config_args(cfg)          # senza caselle: solo i file del PC
+    assert allow == ["mcp__agis-files__*"]
     cfg.google = GoogleConfig(accounts=["a.loffredo@v-media.it"])
     args, allow = mcp_config_args(cfg)
     conf = json.loads((tmp_path / "mcp_google.json").read_text())
-    assert args[0] == "--mcp-config" and allow == ["mcp__agis-google__*"]
+    assert args[0] == "--mcp-config" and allow == ["mcp__agis-files__*", "mcp__agis-google__*"]
     assert conf["mcpServers"]["agis-google"]["args"] == ["-m", "agis.google_mcp"]
 
 
@@ -447,3 +449,66 @@ def test_finestra_permette_selezione_e_copia():
     assert "text_select=True" in (root / "agis" / "app.py").read_text(encoding="utf-8")
     ui = (root / "agis" / "ui" / "index.html").read_text(encoding="utf-8")
     assert "user-select:text" in ui and "📋 Copia" in ui
+
+
+def _ft(tmp_path):
+    from agis.files_mcp import FileTools
+    home = tmp_path / "home"
+    dl = home / "Downloads"; dl.mkdir(parents=True)
+    agis_dir = home / "Documents" / "agis"; agis_dir.mkdir(parents=True)
+    (dl / "fattura.pdf").write_text("x"); (dl / "foto.jpg").write_text("y")
+    (agis_dir / "config.toml").write_text("segreto")
+    return FileTools([str(dl), str(home / "Documents")], [agis_dir], tmp_path / "log.jsonl"), home
+
+
+def test_files_move_no_overwrite_and_undo(tmp_path):
+    ft, home = _ft(tmp_path)
+    dl = home / "Downloads"
+    (dl / "Fatture").mkdir(); (dl / "Fatture" / "fattura.pdf").write_text("vecchia")
+    out = ft.move([{"from": "Downloads/fattura.pdf", "to": "Downloads/Fatture"}])
+    assert "Spostati 1" in out
+    assert (dl / "Fatture" / "fattura.pdf").read_text() == "vecchia"      # mai sovrascritto
+    assert (dl / "Fatture" / "fattura (2).pdf").read_text() == "x"
+    assert "1 elementi rimessi" in ft.undo_last()
+    assert (dl / "fattura.pdf").exists()
+
+
+def test_files_refuse_outside_and_agis_folder(tmp_path):
+    ft, home = _ft(tmp_path)
+    for bad in (str(home / "Documents" / "agis" / "config.toml"), str(tmp_path / "altro"),
+                "../../etc"):
+        try:
+            ft.resolve(bad)
+            raise AssertionError(f"accettato: {bad}")
+        except PermissionError:
+            pass
+    assert "agis" not in ft.list_dir("Documents")
+
+
+def test_files_tools_cannot_delete():
+    from agis.files_mcp import FileTools
+    public = [n for n in dir(FileTools) if not n.startswith("_")]
+    assert not [n for n in public if any(w in n for w in ("delete", "remove", "unlink", "trash"))]
+
+
+def test_voice_split_spoken_and_written():
+    from agis.voice.speaker import VoiceSplitter
+
+    class Sp:
+        max_sentences = None
+        got = ""
+        def feed(self, t): self.got += t
+
+    reply = "🗣️ Ho trovato tre file, te li ho scritti sotto.\n---\n1. C:\\a.txt\n2. **b**"
+    sp = Sp(); v = VoiceSplitter(sp)
+    shown = "".join(v.feed(reply[i:i + 4]) for i in range(0, len(reply), 4))
+    assert "C:" not in sp.got and "tre file" in sp.got
+    assert shown.startswith("1. C:") and "🗣" not in shown
+    sp2 = Sp(); v2 = VoiceSplitter(sp2); v2.feed("Risposta senza formato.")
+    assert sp2.max_sentences == 3
+
+
+def test_clean_for_speech_drops_paths():
+    from agis.voice.tts import clean_for_speech
+    t = clean_for_speech("Apri C:\\Users\\Andrea\\agis\\config.toml e poi `npm i` --- fatto")
+    assert "Users" not in t and "npm" not in t and "---" not in t

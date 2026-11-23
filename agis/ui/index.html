@@ -19,6 +19,13 @@
   .user { align-self:flex-end; background:var(--user); }
   .agis { align-self:flex-start; background:var(--panel); border:1px solid var(--line); }
   .typing { opacity:.85; }
+  .msg code { background:rgba(255,255,255,.08); padding:1px 5px; border-radius:5px;
+              font:13px Consolas, monospace; }
+  .msg pre.code { background:rgba(0,0,0,.35); padding:8px 10px; border-radius:8px; margin:6px 0;
+                  overflow-x:auto; font:13px/1.4 Consolas, monospace; white-space:pre; }
+  .msg strong.h { display:inline-block; margin-top:4px; font-size:15.5px; }
+  .msg hr { border:0; border-top:1px solid var(--line); margin:6px 0; }
+  .msg a { color:var(--accent); }
   .fb { display:flex; gap:6px; margin-top:6px; }
   .fb button { font-size:13px; padding:2px 8px; }
   #status { padding:4px 16px; color:var(--muted); font-size:12px; min-height:20px; }
@@ -60,10 +67,36 @@
     } else { fallback(); }
   }
 
-  function attachTools(d, id, text) {
+  // Markdown leggero e sicuro: prima si "neutralizza" l'HTML, poi si formatta.
+  function esc(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function inlineMd(p) {
+    let h = esc(p);
+    h = h.replace(/^---+\s*$/gm, '<hr>');
+    h = h.replace(/^(\s*)[-*] /gm, '$1• ');
+    h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    h = h.replace(/^#{1,6}\s*(.+)$/gm, '<strong class="h">$1</strong>');
+    h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    h = h.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
+    h = h.replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g, '$1<em>$2</em>');
+    h = h.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2">$1</a>');
+    h = h.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2">$2</a>');
+    return h;
+  }
+  function renderMd(t) {
+    return t.split('```').map((p, i) => i % 2
+      ? '<pre class="code">' + esc(p.replace(/^[\w-]*\n/, '')) + '</pre>'
+      : inlineMd(p)).join('');
+  }
+  // I link si aprono nel browser, non dentro la finestra di AGIS.
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a');
+    if (a) { e.preventDefault(); api().open_url(a.getAttribute('href')); }
+  });
+
+  function attachTools(d, id) {
     const fb = document.createElement('div'); fb.className = 'fb';
     const copy = document.createElement('button'); copy.textContent = '📋 Copia';
-    copy.onclick = () => copyText(text, copy);
+    copy.onclick = () => copyText(d.querySelector('.body').innerText, copy);
     fb.append(copy);
     if (id !== null && id !== undefined) {
       const up = document.createElement('button'); up.textContent = '👍';
@@ -79,35 +112,40 @@
     d.append(fb);
   }
 
+  function bubble(role) {
+    const d = document.createElement('div'); d.className = 'msg ' + role;
+    const b = document.createElement('div'); b.className = 'body'; d.append(b);
+    return d;
+  }
+
   function addMessage(role, text, id) {
-    const d = document.createElement('div');
-    d.className = 'msg ' + role;
-    d.textContent = text;
-    if (role === 'agis') attachTools(d, id, text);
+    const d = bubble(role);
+    const b = d.querySelector('.body');
+    if (role === 'agis') { b.innerHTML = renderMd(text); attachTools(d, id); }
+    else b.textContent = text;
     log.append(d); log.scrollTop = log.scrollHeight;
   }
 
-  // Risposta in arrivo: il testo compare mentre AGIS lo scrive.
-  let live = null;
+  // Risposta in arrivo: il testo compare (già formattato) mentre AGIS lo scrive.
+  let live = null, liveRaw = '';
   function startAgis() {
-    live = document.createElement('div');
-    live.className = 'msg agis typing';
-    live.textContent = '…';
-    live.dataset.empty = '1';
+    live = bubble('agis'); live.classList.add('typing');
+    live.querySelector('.body').textContent = '…';
+    liveRaw = '';
     log.append(live); log.scrollTop = log.scrollHeight;
   }
   function appendAgis(chunk) {
     if (!live) startAgis();
-    if (live.dataset.empty) { live.textContent = ''; delete live.dataset.empty; }
-    live.textContent += chunk;
+    liveRaw += chunk;
+    if (liveRaw.trim()) live.querySelector('.body').innerHTML = renderMd(liveRaw);
     log.scrollTop = log.scrollHeight;
   }
   function finishAgis(text, id) {
     if (!live) startAgis();
     live.classList.remove('typing');
-    live.textContent = text;          // testo finale pulito
-    attachTools(live, id, text);
-    live = null;
+    live.querySelector('.body').innerHTML = renderMd(text);   // testo finale pulito
+    attachTools(live, id);
+    live = null; liveRaw = '';
     log.scrollTop = log.scrollHeight;
   }
 

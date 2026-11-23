@@ -90,7 +90,8 @@ class Api:
             from .voice.tts import TextToSpeech
             self._recorder = Recorder(self._cfg.voice.sample_rate)
             self._stt = SpeechToText(self._cfg.voice.whisper_model, self._cfg.voice.language)
-            self._tts = TextToSpeech(self._cfg.voice.piper_model)
+            v = self._cfg.voice
+            self._tts = TextToSpeech(v.piper_model, v.tts, v.edge_voice, v.edge_rate)
             self._status(f"Pronto · voce {self._tts.engine} · {self._cfg.voice.hotkey} per parlare")
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
@@ -134,10 +135,11 @@ class Api:
             self._memory.add_message("user", text, self._brain.session_id)
             self._status("Penso…")
             self._js("startAgis()")
-            speaker = None
+            speaker = splitter = None
             if voice and self._tts:
-                from .voice.speaker import StreamingSpeaker
+                from .voice.speaker import StreamingSpeaker, VoiceSplitter
                 speaker = self._speaker = StreamingSpeaker(self._tts)
+                splitter = VoiceSplitter(speaker)  # parlato all'altoparlante, scritto qui
             buf: list[str] = []
             last = [time.monotonic()]
 
@@ -149,9 +151,7 @@ class Api:
                 last[0] = time.monotonic()
 
             def on_delta(t: str) -> None:
-                buf.append(t)
-                if speaker:
-                    speaker.feed(t)
+                buf.append(splitter.feed(t) if splitter else t)
                 if time.monotonic() - last[0] > 0.12:  # aggiorna la finestra ~8 volte al secondo
                     flush()
 
@@ -161,6 +161,8 @@ class Api:
             except BrainError as e:
                 answer = f"⚠️ {e}"
             flush()
+            if splitter:
+                answer = splitter.written(answer)
             if speaker:
                 speaker.finish(fallback=answer)
             mid = self._memory.add_message("agis", answer, self._brain.session_id)
@@ -168,6 +170,12 @@ class Api:
             self._status("Pronto")
         finally:
             self._busy.release()
+
+    def open_url(self, url: str) -> None:
+        """Apre i link delle risposte nel browser predefinito (solo http/https)."""
+        if isinstance(url, str) and url.startswith(("http://", "https://")):
+            import webbrowser
+            webbrowser.open(url)
 
     def feedback(self, message_id: int, rating: int, note: str = "") -> None:
         self._memory.add_feedback(message_id, int(rating), note or "")

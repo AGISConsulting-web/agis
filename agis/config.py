@@ -78,6 +78,17 @@ class VoiceConfig:
     language: str = "it"
     piper_model: str = "voices/it_IT-paola-medium.onnx"
     sample_rate: int = 16000
+    # "edge" = voci neurali Microsoft (gratis, naturali, serve internet; se manca la rete
+    # passa da sola a Piper). "piper" = solo locale. "windows" = voce di sistema.
+    tts: str = "edge"
+    edge_voice: str = "it-IT-IsabellaNeural"  # oppure it-IT-ElsaNeural, it-IT-DiegoNeural
+    edge_rate: str = "+8%"
+
+
+@dataclass
+class FilesConfig:
+    """Cartelle del PC che AGIS può riordinare (vuoto = Download, Desktop, Documenti)."""
+    roots: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -107,6 +118,7 @@ class Config:
     notion: NotionConfig = field(default_factory=NotionConfig)
     connectors: ConnectorsConfig = field(default_factory=ConnectorsConfig)
     google: GoogleConfig = field(default_factory=GoogleConfig)
+    files: FilesConfig = field(default_factory=FilesConfig)
 
 
 def load(path: Path | None = None) -> Config:
@@ -115,7 +127,9 @@ def load(path: Path | None = None) -> Config:
     if path.exists():
         raw = tomllib.loads(path.read_text(encoding="utf-8-sig"))  # regge anche i file salvati con BOM
     brain = BrainConfig(**raw.get("brain", {}))
-    voice = VoiceConfig(**raw.get("voice", {}))
+    voice = VoiceConfig(**{k: v for k, v in raw.get("voice", {}).items()
+                           if k in VoiceConfig.__dataclass_fields__})
+    files = FilesConfig(**raw.get("files", {}))
     known = set(NotionConfig.__dataclass_fields__)
     shared = {**raw.get("notion", {}), **raw.get("cervello", {})}
     notion = NotionConfig(**{k: v for k, v in shared.items() if k in known})
@@ -130,4 +144,4 @@ def load(path: Path | None = None) -> Config:
     if not Path(voice.piper_model).is_absolute():
         voice.piper_model = str(ROOT / voice.piper_model)
     return Config(brain=brain, voice=voice, workspace=workspace, data_dir=data_dir,
-                  notion=notion, connectors=connectors, google=google)
+                  notion=notion, connectors=connectors, google=google, files=files)
