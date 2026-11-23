@@ -13,7 +13,9 @@
   header h1 { font-size:16px; margin:0; letter-spacing:.12em; }
   header #sync { margin-left:auto; }
   #log { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
-  .msg { max-width:88%; padding:10px 12px; border-radius:12px; white-space:pre-wrap; word-wrap:break-word; }
+  .msg { max-width:88%; padding:10px 12px; border-radius:12px; white-space:pre-wrap; word-wrap:break-word;
+         user-select:text; -webkit-user-select:text; cursor:text; }
+  .fb, .fb * { user-select:none; -webkit-user-select:none; }
   .user { align-self:flex-end; background:var(--user); }
   .agis { align-self:flex-start; background:var(--panel); border:1px solid var(--line); }
   .typing { opacity:.85; }
@@ -45,23 +47,43 @@
   function setStatus(s) { document.getElementById('status').textContent = s; }
   function setListening(on) { document.getElementById('mic').classList.toggle('on', on); }
 
-  function attachFeedback(d, id) {
-    const fb = document.createElement('div'); fb.className = 'fb';
-    const up = document.createElement('button'); up.textContent = '👍';
-    const down = document.createElement('button'); down.textContent = '👎 correggi';
-    up.onclick = () => { api().feedback(id, 1, ''); fb.remove(); };
-    down.onclick = () => {
-      const note = prompt('Cosa devo fare diversamente la prossima volta?');
-      if (note !== null) { api().feedback(id, -1, note); fb.remove(); }
+  // Copia negli appunti: prima l'API moderna, se non c'è il metodo classico.
+  function copyText(text, btn) {
+    const done = () => { btn.textContent = '✔ Copiato'; setTimeout(() => btn.textContent = '📋 Copia', 1500); };
+    const fallback = () => {
+      const ta = document.createElement('textarea'); ta.value = text;
+      ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.append(ta);
+      ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove();
     };
-    fb.append(up, down); d.append(fb);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+  }
+
+  function attachTools(d, id, text) {
+    const fb = document.createElement('div'); fb.className = 'fb';
+    const copy = document.createElement('button'); copy.textContent = '📋 Copia';
+    copy.onclick = () => copyText(text, copy);
+    fb.append(copy);
+    if (id !== null && id !== undefined) {
+      const up = document.createElement('button'); up.textContent = '👍';
+      const down = document.createElement('button'); down.textContent = '👎 correggi';
+      const clear = () => { up.remove(); down.remove(); };
+      up.onclick = () => { api().feedback(id, 1, ''); clear(); };
+      down.onclick = () => {
+        const note = prompt('Cosa devo fare diversamente la prossima volta?');
+        if (note !== null) { api().feedback(id, -1, note); clear(); }
+      };
+      fb.append(up, down);
+    }
+    d.append(fb);
   }
 
   function addMessage(role, text, id) {
     const d = document.createElement('div');
     d.className = 'msg ' + role;
     d.textContent = text;
-    if (role === 'agis' && id !== null) attachFeedback(d, id);
+    if (role === 'agis') attachTools(d, id, text);
     log.append(d); log.scrollTop = log.scrollHeight;
   }
 
@@ -84,7 +106,7 @@
     if (!live) startAgis();
     live.classList.remove('typing');
     live.textContent = text;          // testo finale pulito
-    attachFeedback(live, id);
+    attachTools(live, id, text);
     live = null;
     log.scrollTop = log.scrollHeight;
   }

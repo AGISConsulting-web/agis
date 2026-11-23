@@ -223,7 +223,8 @@ def main() -> None:
     cfg = config_mod.load()
     api = Api(cfg)
     window = webview.create_window(
-        "AGIS", UI.as_uri(), js_api=api, width=460, height=720, min_size=(360, 480))
+        "AGIS", UI.as_uri(), js_api=api, width=460, height=720, min_size=(360, 480),
+        text_select=True)  # senza questo pywebview blocca selezione e copia del testo
     api._window = window
 
     if cfg.voice.enabled:

@@ -439,3 +439,11 @@ def test_launcher_update_installs_only_when_requirements_change(tmp_path, monkey
     calls.clear()
     launcher.update()                     # niente di cambiato: solo git pull
     assert calls and all("pip" not in c for c in calls) and calls[0][:2] == ["git", "pull"]
+
+
+def test_finestra_permette_selezione_e_copia():
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    assert "text_select=True" in (root / "agis" / "app.py").read_text(encoding="utf-8")
+    ui = (root / "agis" / "ui" / "index.html").read_text(encoding="utf-8")
+    assert "user-select:text" in ui and "📋 Copia" in ui
