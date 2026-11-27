@@ -512,3 +512,12 @@ def test_clean_for_speech_drops_paths():
     from agis.voice.tts import clean_for_speech
     t = clean_for_speech("Apri C:\\Users\\Andrea\\agis\\config.toml e poi `npm i` --- fatto")
     assert "Users" not in t and "npm" not in t and "---" not in t
+
+
+def test_launcher_finds_files_blocking_update():
+    from agis.launcher import blocking_files
+    err = ("error: Your local changes to the following files would be overwritten by merge:\n"
+           "\tworkspace/CLAUDE.md\n\tworkspace/.claude/settings.json\n"
+           "Please commit your changes or stash them before you merge.\nAborting")
+    assert blocking_files(err) == ["workspace/CLAUDE.md", "workspace/.claude/settings.json"]
+    assert blocking_files("fatal: no internet") == []

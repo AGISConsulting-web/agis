@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import subprocess
+import time
 import sys
 import traceback
 from datetime import datetime
@@ -50,10 +51,44 @@ def requirements_hash() -> str:
     return hashlib.sha256(req.read_bytes()).hexdigest() if req.exists() else ""
 
 
+# File del programma che a volte risultano "modificati" sul PC (a capo Windows, o modificati
+# da AGIS stesso): se bloccano l'aggiornamento se ne salva una copia e si ripristinano.
+RESTORABLE = ("workspace/", "agis/", "scripts/", "requirements.txt", "config.example.toml")
+
+
+def blocking_files(stderr: str) -> list[str]:
+    """Estrae i file elencati da git in 'Your local changes ... would be overwritten'."""
+    if "would be overwritten" not in stderr:
+        return []
+    files, grab = [], False
+    for line in stderr.splitlines():
+        if "would be overwritten" in line:
+            grab = True
+            continue
+        if grab:
+            name = line.strip()
+            if not name or name.startswith(("Please", "Aborting")):
+                break
+            files.append(name)
+    return files
+
+
 def update() -> None:
     """Aggiornamento silenzioso: se fallisce (niente internet, modifiche locali) si va avanti."""
     before = requirements_hash()
     res = run(["git", "pull", "--ff-only", "--quiet"], timeout=25)
+    if res is not None and res.returncode != 0:
+        files = blocking_files(res.stderr)
+        if files and all(f.startswith(RESTORABLE) for f in files):
+            backup = DATA / "copie_locali" / time.strftime("%Y%m%d-%H%M%S")
+            for f in files:
+                src = ROOT / f
+                if src.exists():
+                    (backup / f).parent.mkdir(parents=True, exist_ok=True)
+                    (backup / f).write_bytes(src.read_bytes())
+            run(["git", "checkout", "--", *files], timeout=25)
+            log(f"modifiche locali a {', '.join(files)} salvate in {backup} e ripristinate")
+            res = run(["git", "pull", "--ff-only", "--quiet"], timeout=25)
     if res is not None:
         log(f"git pull: {'ok' if res.returncode == 0 else res.stderr.strip()[:300]}")
     stamp = DATA / ".requirements.sha256"
